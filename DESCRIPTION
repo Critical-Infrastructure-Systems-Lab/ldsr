@@ -1,11 +1,22 @@
 Package: LDSreconstruction
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Streamflow Reconstruction using Linear Dynamical Systems
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
+Authors@R: c(
+    person("Hung", "Nguyen", email = "ntthung@gmail.com", role = c("aut", "cre")),
+    person("Stefano", "Galelli", email = "stefano_galelli@sutd.edu.sg", role = "aut")
+    )
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
+Imports:
+    data.table,
+    doParallel,
+    hydroGOF,
+    Rcpp (>= 0.12.16)
+RoxygenNote: 6.1.0
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo
