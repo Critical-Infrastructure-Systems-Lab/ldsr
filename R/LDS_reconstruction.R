@@ -1,10 +1,19 @@
-learnLDS_restart <- function(y, u, v, mu, init = NULL, num.restart,
-                             niter = 1000, tol = 1e-5, return.init = FALSE,
-                             parallel = FALSE) {
+#' Learn LDS model with multiple initial conditions
+#'
+#' The initial conditions can either be randomized (specifiled by num.restart) or provided beforehand.
+#' @param Qa Observations: a data frame of annual streamflow with at least two columns: year and Qa.
+#' @param u Input matrix for the state equation (m_u rows, T columns)
+#' @param v Input matrix for the output equation (m_v rows, T columns)
+#' @param init A list of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.
+#' @param num.restart if init is not given then num.restart must be provided. In this case the function will randomize the initial value by sampling uniformly within the range for each parameters (A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).
+#' @param niter Maximum number of iterations, default 1000
+#' @param tol Tolerance for likelihood convergence, defualt 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
+#' @param return.init Indicate whether the initial condition that results in the highest log-likelihood is returned. Default is TRUE.
+#' @param parallel If TRUE, the computation is done in parallel using all available cores (using package doParallel). If FALSE, the computation is done serially.
 
-    # Learn multiple LDS models with randomized initial conditions (specified by num.restart)
-    # and select the one with the highest likelihood
-    # Use a pecified grid of initial conditions instead of randomized ones if provided
+learnLDS_restart <- function(Qa, u, v, init = NULL, num.restart,
+                             niter = 1000, tol = 1e-5, return.init = TRUE,
+                             parallel = FALSE) {
 
     if (is.null(init))
         init <- replicate(num.restart,
@@ -12,11 +21,12 @@ learnLDS_restart <- function(y, u, v, mu, init = NULL, num.restart,
                           simplify = F)
 
     if (parallel) {
-        models <- foreach(init.val = init) %dopar%
-            learnLDS(y, u, v, mu, init.val, niter, tol)
+
+        models <- foreach::foreach(init.val = init) %dopar%
+            learnLDS(y, u, v, init.val, niter, tol)
     } else {
         models <- lapply(init, function(init.val)
-            learnLDS(y, u, v, mu, init.val, niter, tol))
+            learnLDS(y, u, v, init.val, niter, tol))
     }
 
     liks <- sapply(models, '[[', 'lik')
@@ -59,7 +69,7 @@ cvLDS <- function(Qa, u, v, init = NULL, num.restart = 20, k, n.reps = 100, nite
     }
 
     if (parallel)  {
-        cv.results <- foreach(omit = Z) %dopar% {
+        cv.results <- foreach::foreach(omit = Z) %dopar% {
             y2 <- y
             y2[omit] <- NA
             if (is.null(init)) {
