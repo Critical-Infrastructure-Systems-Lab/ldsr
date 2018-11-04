@@ -7,29 +7,28 @@
 using namespace Rcpp;
 
 // learnLDS
-List learnLDS(arma::mat y, arma::mat u, arma::mat v, double mu, arma::vec init, int niter, double tol);
-RcppExport SEXP _LDSreconstruction_learnLDS(SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP muSEXP, SEXP initSEXP, SEXP niterSEXP, SEXP tolSEXP) {
+List learnLDS(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, double tol);
+RcppExport SEXP _ldsr_learnLDS(SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP initSEXP, SEXP niterSEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat >::type y(ySEXP);
     Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type v(vSEXP);
-    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type init(initSEXP);
     Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(learnLDS(y, u, v, mu, init, niter, tol));
+    rcpp_result_gen = Rcpp::wrap(learnLDS(y, u, v, init, niter, tol));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_LDSreconstruction_learnLDS", (DL_FUNC) &_LDSreconstruction_learnLDS, 7},
+    {"_ldsr_learnLDS", (DL_FUNC) &_ldsr_learnLDS, 6},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_LDSreconstruction(DllInfo *dll) {
+RcppExport void R_init_ldsr(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

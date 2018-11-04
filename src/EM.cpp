@@ -7,13 +7,18 @@ using namespace arma;
 
 // [[Rcpp::depends(RcppArmadillo)]]
 
+//' Implement Kalman smoothing
+//'
+//' Estimate the hidden state and expected log-likelihood given the observations, exogeneous input and system parameters
+//'
+//' @param y Observation matrix (may need to be normalized and centered before hand) (q rows, T columns)
+//' @param u Input matrix for the state equation (m_u rows, T columns)
+//' @param v Input matrix for the output equation (m_v rows, T columns)
+//' @param theta A list of system parameters (A, B, C, D, Q, R)'
+//' @return A list of fitted elements (X, Y, V, Cov, and lik)
+//' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
+//' @export
 List Kalman_smoother(mat y, mat u, mat v, List theta) {
-
-    /*** Implement Kalman smoothing
-     * This code only works on one dimensional state and output at the moment.
-     * Therefore, transposing is skipped, and matrix inversion is treated as /,
-     * and log(det(Sigma)) is treated as log(Sigma).
-     */
 
     // Model parameters
     mat A = theta["A"];
@@ -178,8 +183,23 @@ List Mstep(mat y, mat u, mat v, List fit) {
                         Named("V1") = V1);
 }
 
+//' Learn LDS model
+//'
+//' Estimate the hidden state and model parameters given observations and exogeneous inputs
+//'
+//' @param y Observation matrix (may need to be normalized and centered before hand) (q rows, T columns)
+//' @param u Input matrix for the state equation (m_u rows, T columns)
+//' @param v Input matrix for the output equation (m_v rows, T columns)
+//' @param mu The mean of y (if y was centralized before), to be added back to the prediction
+//' @return A list of fitted elements (X, Y, V, Cov, and lik)
+//' * X: a matrix of fitted states
+//' * Y: a matrix of fitted observation
+//' * V: a matrix of covariance of X
+//' * Cov: covariance of X_t and X_t-1
+//' lik : log-likelihood
+//' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 // [[Rcpp::export]]
-List learnLDS(arma::mat y, arma::mat u, arma::mat v, double mu, arma::vec init, int niter, double tol) {
+List learnLDS(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, double tol) {
 
     int d = u.n_rows;
     mat A(1, 1); A.fill(init[0]);
@@ -212,9 +232,17 @@ List learnLDS(arma::mat y, arma::mat u, arma::mat v, double mu, arma::vec init, 
     // subsequent iterations
     int end = 0;
     for (int i=2; i<niter; i++) {
+        // Check user interuption every 100 iterations; otherwise R can crash upon interuption.
+        if (i % 100 == 0)
+            Rcpp::checkUserInterrupt();
+        // Iterations
         theta = Mstep(y, u, v, fit);
         fit = Kalman_smoother(y, u, v, theta);
         lik[i] = fit["lik"];
+        // Check for convergence: terminates when the change in likelihood is less than tol
+        //     for two consectituve iterations.
+        // Use std::abs, otherwise the compiler may understand abs as
+        //     int abs(int x) and returns 0, which stops the iterations immediately.
         if (std::abs(lik[i] - lik[i-1]) < tol && std::abs(lik[i-1] - lik[i-2]) < tol) {
             end = i;
             break;
