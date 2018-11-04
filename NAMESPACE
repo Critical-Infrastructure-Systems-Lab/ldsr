@@ -1,3 +1,3 @@
-useDynLib(LDSreconstruction, .registration=TRUE)
+useDynLib(ldsr, .registration=TRUE)
 importFrom(Rcpp, evalCpp)
 exportPattern("^[[:alpha:]]+")
