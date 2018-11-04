@@ -6,8 +6,8 @@
 \title{P1 annual streamflow}
 \format{A data frame with 85 rows and 2 variables:
 \describe{
-  \item{year}{from 1921 to 1985}
-  \item{Qa}{annual streamflow in million cubic meters per month}
+\item{year}{from 1921 to 1985}
+\item{Qa}{annual streamflow in million cubic meters per month}
 }}
 \source{
 \url{https://www.hydro-1.net/08HYDRO/HD-04/4-06.html}
