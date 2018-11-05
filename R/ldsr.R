@@ -10,6 +10,7 @@
 #' @importFrom parallel stopCluster
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach
+#' @importFrom foreach %dopar%
 #' @importFrom Rcpp evalCpp
 #' @useDynLib ldsr, .registration = TRUE
 NULL
