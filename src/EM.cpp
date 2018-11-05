@@ -9,7 +9,7 @@ using namespace arma;
 
 //' Implement Kalman smoothing
 //'
-//' Estimate the hidden state and expected log-likelihood given the observations, exogeneous input and system parameters
+//' Estimate the hidden state and expected log-likelihood given the observations, exogeneous input and system parameters. This is an internal function and should not be called directly.
 //'
 //' @param y Observation matrix (may need to be normalized and centered before hand) (q rows, T columns)
 //' @param u Input matrix for the state equation (m_u rows, T columns)
@@ -17,7 +17,8 @@ using namespace arma;
 //' @param theta A list of system parameters (A, B, C, D, Q, R)'
 //' @return A list of fitted elements (X, Y, V, Cov, and lik)
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
-List Kalman_smoother(mat y, mat u, mat v, List theta) {
+// [[Rcpp::export]]
+List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta) {
 
     // Model parameters
     mat A = theta["A"];
@@ -103,7 +104,6 @@ List Kalman_smoother(mat y, mat u, mat v, List theta) {
     }
 
     double lik = -0.5*n_obs*log(2*pi) - 0.5*accu(delta / Sigma % delta + log(Sigma));
-    //cout << n_obs << " " << lik << " " << lik / n_obs << endl;
     lik = lik / n_obs;
 
     return List::create(Named("X") = Xs,
@@ -113,9 +113,12 @@ List Kalman_smoother(mat y, mat u, mat v, List theta) {
                         Named("lik") = lik);
 }
 
-List Mstep(mat y, mat u, mat v, List fit) {
-
-    // Maximizing expected likelihood using analytical solution
+//' Maximizing expected likelihood using analytical solution
+//'
+//' @inheritParams Kalman_smoother
+//' @param fit result of a Kalman_smoother
+// [[Rcpp::export]]
+List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
 
     mat X = fit["X"];
     mat V = fit["V"];
@@ -184,12 +187,12 @@ List Mstep(mat y, mat u, mat v, List fit) {
 
 //' Learn LDS model
 //'
-//' Estimate the hidden state and model parameters given observations and exogeneous inputs
+//' Estimate the hidden state and model parameters given observations and exogeneous inputs using the EM algorithm. This is the key backend routine of this package.
 //'
-//' @param y Observation matrix (may need to be normalized and centered before hand) (q rows, T columns)
-//' @param u Input matrix for the state equation (m_u rows, T columns)
-//' @param v Input matrix for the output equation (m_v rows, T columns)
-//' @param mu The mean of y (if y was centralized before), to be added back to the prediction
+//' @inheritParams Kalman_smoother
+//' @param init A list of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.
+//' @param niter Maximum number of iterations, default 1000
+//' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized
 //' @return A list of fitted elements (X, Y, V, Cov, and lik)
 //' * X: a matrix of fitted states
 //' * Y: a matrix of fitted observation
