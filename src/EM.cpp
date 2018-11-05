@@ -17,7 +17,6 @@ using namespace arma;
 //' @param theta A list of system parameters (A, B, C, D, Q, R)'
 //' @return A list of fitted elements (X, Y, V, Cov, and lik)
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
-//' @export
 List Kalman_smoother(mat y, mat u, mat v, List theta) {
 
     // Model parameters
