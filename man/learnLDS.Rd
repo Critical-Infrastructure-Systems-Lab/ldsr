@@ -20,13 +20,17 @@ learnLDS(y, u, v, init, niter, tol)
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized}
 }
 \value{
-A list of fitted elements (X, Y, V, Cov, and lik)
+A list of model results
+\itemize{
+\item theta: model parameters (A, B, C, D, Q, R, mu1, V1) resulted from Mstep
+\item fit: results of Estep
 \itemize{
 \item X: a matrix of fitted states
 \item Y: a matrix of fitted observation
 \item V: a matrix of covariance of X
 \item Cov: covariance of X_t and X_t-1
-lik : log-likelihood
+}
+\item lik : log-likelihood
 }
 }
 \description{

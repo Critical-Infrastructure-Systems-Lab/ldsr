@@ -31,12 +31,14 @@ Mstep <- function(y, u, v, fit) {
 #' @param init A list of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.
 #' @param niter Maximum number of iterations, default 1000
 #' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized
-#' @return A list of fitted elements (X, Y, V, Cov, and lik)
-#' * X: a matrix of fitted states
-#' * Y: a matrix of fitted observation
-#' * V: a matrix of covariance of X
-#' * Cov: covariance of X_t and X_t-1
-#' lik : log-likelihood
+#' @return A list of model results
+#' * theta: model parameters (A, B, C, D, Q, R, mu1, V1) resulted from Mstep
+#' * fit: results of Estep
+#'     - X: a matrix of fitted states
+#'     - Y: a matrix of fitted observation
+#'     - V: a matrix of covariance of X
+#'     - Cov: covariance of X_t and X_t-1
+#' * lik : log-likelihood
 #' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 learnLDS <- function(y, u, v, init, niter, tol) {
     .Call(`_ldsr_learnLDS`, y, u, v, init, niter, tol)
