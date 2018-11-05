@@ -11,7 +11,7 @@
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar%
 #' @importFrom Rcpp evalCpp
-#' @importFrom hydroGOF ssq NSE KGE
+#' @importFrom hydroGOF ssq NSE KGE rmse
 #' @useDynLib ldsr, .registration = TRUE
 NULL
 
