@@ -21,9 +21,17 @@ learnLDS_restart <- function(y, u, v, init,
         models <- lapply(init, function(init.val) learnLDS(y, u, v, init.val, niter, tol))
     }
 
+    # Select the model with highest likelihood
+    # Only select models with C > 0 for physical interpretation (if possible)
     liks <- sapply(models, '[[', 'lik')
+    all.C <- lapply(models, '[[', 'theta') %>% sapply('[[', 'C')
+    pos.C <- which(all.C > 0) # Positions of positive C
+    if (length(pos.C) > 0) {
+        max.ind <- which(liks == max(liks[pos.C]))
+    } else {
+        max.ind <- which.max(liks)
+    }
 
-    max.ind <- which.max(liks)
     if (return.init) {
         ans <- list(model = models[[max.ind]],
                     init = init[[max.ind]])
@@ -112,27 +120,27 @@ cvLDS <- function(Qa, u, v, init = NULL, num.restart = 20,
         z2 <- Z
         Z <- lapply(Z2, '+', n.paleo)
     }
+    # Randomize initial conditions if not given
+    if (is.null(init))
+        init <- replicate(num.restart,
+                          runif(4, min = c(0, -1, 0, -1), max = c(0.9, 1, 1, 1)),
+                          simplify = F)
 
     if (parallel)  {
+        nbCores <- detectCores()
+        cl <- makeCluster(nbCores)
+        registerDoParallel(cl)
         cv.results <- foreach(omit = Z) %dopar% {
             y2 <- y
             y2[omit] <- NA
-            if (is.null(init)) {
-                learnLDS_restart(y2, u, v, num.restart, niter, tol)
-            } else {
-                learnLDS(y2, u, v, init, niter, tol)
-            }
+            learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE)
         }
-
+        stopCluster(cl)
     } else {
         cv.results <- lapply(Z, function(omit) {
             y2 <- y
             y2[omit] <- NA
-            if (is.null(init)) {
-                learnLDS_restart(y2, u, v, num.restart, niter, tol)
-            } else {
-                learnLDS(y2, u, v, init, niter, tol)
-            }
+            learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE)
         })
     }
 
