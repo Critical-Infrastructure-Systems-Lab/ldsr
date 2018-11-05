@@ -13,7 +13,11 @@ learnLDS(y, u, v, init, niter, tol)
 
 \item{v}{Input matrix for the output equation (m_v rows, T columns)}
 
-\item{mu}{The mean of y (if y was centralized before), to be added back to the prediction}
+\item{init}{A list of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.}
+
+\item{niter}{Maximum number of iterations, default 1000}
+
+\item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized}
 }
 \value{
 A list of fitted elements (X, Y, V, Cov, and lik)
@@ -26,7 +30,7 @@ lik : log-likelihood
 }
 }
 \description{
-Estimate the hidden state and model parameters given observations and exogeneous inputs
+Estimate the hidden state and model parameters given observations and exogeneous inputs using the EM algorithm. This is the key backend routine of this package.
 }
 \section{Note}{
  This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
