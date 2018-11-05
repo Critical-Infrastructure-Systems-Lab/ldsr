@@ -19,6 +19,10 @@ learnLDS_restart <- function(Qa, u, v, init = NULL, num.restart,
         init <- replicate(num.restart,
                           runif(4, min = c(0, -1, 0, -1), max = c(0.9, 1, 1, 1)),
                           simplify = F)
+    # Attach NA and make the y matrix
+    mu <- mean(log(Qa$Qa), na.rm = T)
+    n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
+    y <- t(c(rep(NA, n.paleo), log(Qa$Qa) - mu))
 
     if (parallel) {
         nbCores <- detectCores()
