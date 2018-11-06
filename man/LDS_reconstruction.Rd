@@ -4,8 +4,8 @@
 \alias{LDS_reconstruction}
 \title{Learn LDS model with multiple initial conditions}
 \usage{
-LDS_reconstruction(Qa, u, v, init = NULL, num.restart, niter = 1000,
-  tol = 1e-05, return.init = TRUE, parallel = FALSE)
+LDS_reconstruction(Qa, u, v, init = NULL, num.restart = 100,
+  niter = 1000, tol = 1e-05, return.init = TRUE, parallel = FALSE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
@@ -27,6 +27,19 @@ log-likelihood is returned. Default is TRUE.}
 
 \item{parallel}{If TRUE, the computation is done in parallel using all available cores
 (using the doParallel backend). If FALSE, the computation is done serially.}
+}
+\value{
+A list of the following elements
+\itemize{
+\item rec: reconstruction results, a data.table with the following columns
+\itemize{
+\item year: calculated from Qa and the length of u
+\item X: the estimated hidden state
+\item Xl, Xu: lower and upper range for the 95% confidence interval of X
+\item Q: the reconstructed streamflow
+\item Ql, Qu: lower and upper range for the 95% confidence interval of Q
+}
+}
 }
 \description{
 The initial conditions can either be randomized (specifiled by num.restart) or provided beforehand.

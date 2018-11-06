@@ -55,7 +55,7 @@ learnLDS_restart <- function(y, u, v, init,
 #'     - Q: the reconstructed streamflow
 #'     - Ql, Qu: lower and upper range for the 95% confidence interval of Q
 #' @export
-LDS_reconstruction <- function(Qa, u, v, init = NULL, num.restart,
+LDS_reconstruction <- function(Qa, u, v, init = NULL, num.restart = 100,
                                niter = 1000, tol = 1e-5, return.init = TRUE,
                                parallel = FALSE) {
 
