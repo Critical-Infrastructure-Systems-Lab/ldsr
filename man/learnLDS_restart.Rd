@@ -20,10 +20,15 @@ learnLDS_restart(y, u, v, init, niter = 1000, tol = 1e-05,
 
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.}
 
-\item{return.init}{Indicate whether the initial condition that results in the highest log-likelihood is returned. Default is TRUE.}
+\item{return.init}{Indicate whether the initial condition that results in the highest
+log-likelihood is returned. Default is TRUE.}
 
-\item{parallel}{If TRUE, the computation is done in parallel using all available cores (using the doParallel backend). If FALSE, the computation is done serially.}
+\item{parallel}{If TRUE, the computation is done in parallel using all available cores
+(using the doParallel backend). If FALSE, the computation is done serially.}
+}
+\value{
+a list as produced by \code{[learnLDS]}. If return.init is true, a vector of initial condition is included in the list as well.
 }
 \description{
-This is the backend computation for \code{LDS_reconstruction}.
+This is the backend computation for \code{[LDS_reconstruction]}.
 }

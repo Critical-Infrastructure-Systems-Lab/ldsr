@@ -22,9 +22,11 @@ LDS_reconstruction(Qa, u, v, init = NULL, num.restart, niter = 1000,
 
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.}
 
-\item{return.init}{Indicate whether the initial condition that results in the highest log-likelihood is returned. Default is TRUE.}
+\item{return.init}{Indicate whether the initial condition that results in the highest
+log-likelihood is returned. Default is TRUE.}
 
-\item{parallel}{If TRUE, the computation is done in parallel using all available cores (using the doParallel backend). If FALSE, the computation is done serially.}
+\item{parallel}{If TRUE, the computation is done in parallel using all available cores
+(using the doParallel backend). If FALSE, the computation is done serially.}
 }
 \description{
 The initial conditions can either be randomized (specifiled by num.restart) or provided beforehand.

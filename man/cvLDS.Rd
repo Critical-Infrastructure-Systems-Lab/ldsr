@@ -22,7 +22,8 @@ cvLDS(Qa, u, v, init = NULL, num.restart = 20, k, n.reps = 100,
 
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.}
 
-\item{parallel}{If TRUE, the computation is done in parallel using all available cores (using the doParallel backend). If FALSE, the computation is done serially.}
+\item{parallel}{If TRUE, the computation is done in parallel using all available cores
+(using the doParallel backend). If FALSE, the computation is done serially.}
 }
 \description{
 Cross validate LDS model

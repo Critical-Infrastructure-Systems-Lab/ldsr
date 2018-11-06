@@ -1,11 +1,14 @@
 #' Learn LDS model with multiple initial conditions
 #'
-#' This is the backend computation for \code{LDS_reconstruction}.
+#' This is the backend computation for [LDS_reconstruction].
 #' @inheritParams learnLDS
-#' @param return.init Indicate whether the initial condition that results in the highest log-likelihood is returned. Default is TRUE.
+#' @param return.init Indicate whether the initial condition that results in the highest
+#' log-likelihood is returned. Default is TRUE.
 #' @param niter Maximum number of iterations, default 1000
 #' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
-#' @param parallel If TRUE, the computation is done in parallel using all available cores (using the doParallel backend). If FALSE, the computation is done serially.
+#' @param parallel If TRUE, the computation is done in parallel using all available cores
+#' (using the doParallel backend). If FALSE, the computation is done serially.
+#' @return a list as produced by [learnLDS]. If return.init is true, a vector of initial condition is included in the list as well.
 #' @export
 learnLDS_restart <- function(y, u, v, init,
                              niter = 1000, tol = 1e-5, return.init = TRUE,
@@ -32,12 +35,9 @@ learnLDS_restart <- function(y, u, v, init,
         max.ind <- which.max(liks)
     }
 
-    if (return.init) {
-        ans <- list(model = models[[max.ind]],
-                    init = init[[max.ind]])
-    } else {
-        ans <- models[[which.max(liks)]]
-    }
+    ans <- models[[max.ind]]
+    if (return.init) ans$init <- init[[max.ind]]
+
     return(ans)
 }
 
@@ -47,51 +47,56 @@ learnLDS_restart <- function(y, u, v, init,
 #' @param Qa Observations: a data.table of annual streamflow with at least two columns: year and Qa.
 #' @inheritParams learnLDS_restart
 #' @param num.restart if init is not given then num.restart must be provided. In this case the function will randomize the initial value by sampling uniformly within the range for each parameters (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
+#' @return A list of the following elements
+#' * rec: reconstruction results, a data.table with the following columns
+#'     - year: calculated from Qa and the length of u
+#'     - X: the estimated hidden state
+#'     - Xl, Xu: lower and upper range for the 95% confidence interval of X
+#'     - Q: the reconstructed streamflow
+#'     - Ql, Qu: lower and upper range for the 95% confidence interval of Q
 #' @export
 LDS_reconstruction <- function(Qa, u, v, init = NULL, num.restart,
                                niter = 1000, tol = 1e-5, return.init = TRUE,
                                parallel = FALSE) {
 
     # Randomize initial conditions if not given
-    if (is.null(init))
+    if (is.null(init)) {
         init <- replicate(num.restart,
                           runif(4, min = c(0, -1, 0, -1), max = c(0.9, 1, 1, 1)),
                           simplify = F)
+    } else {
+        if (!is.list(init)) # learnLDS expects init is a list
+            init <- list(init)
+    }
     # Attach NA and make the y matrix
     mu <- mean(log(Qa$Qa), na.rm = T)
     n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
     y <- t(c(rep(NA, n.paleo), log(Qa$Qa) - mu))
     # Learn multiple models and select the best one
     results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel)
-    if (return.init) {
-        fit <- results$model$fit
-        theta <- results$model$theta
-    } else {
-        fit <- results$fit
-        theta <- results$theta
-    }
     # Construct 95% confidence intervals
-    X <- as.vector(fit$X)
-    V <- as.vector(fit$V)
-    CI.X <- 1.96*sqrt(V)
-    Xl <- X - CI.X # Lower range for X
-    Xu <- X + CI.X # Upper range for X
-    Y <- as.vector(fit$Y + mu)
-    CI.Y <- 1.96 * (as.vector(theta$C) * as.vector(fit$V) * as.vector(theta$C) +
-                        as.vector(theta$R))
-    Yl <- Y - CI.Y # Lower range for Y
-    Yu <- Y + CI.Y # Upper range for Y
-    # Transform Y to Q and put in a data.table
-    rec <- data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
-                      X, Xl, Xu,
-                      Q = exp(Y),
-                      Ql = exp(Yl),
-                      Qu = exp(Yu))
+    with(results, {
+        X <- as.vector(fit$X)
+        V <- as.vector(fit$V)
+        CI.X <- 1.96*sqrt(V)
+        Xl <- X - CI.X # Lower range for X
+        Xu <- X + CI.X # Upper range for X
+        Y <- as.vector(fit$Y + mu)
+        CI.Y <- 1.96 * (as.vector(theta$C) * as.vector(fit$V) * as.vector(theta$C) +
+                            as.vector(theta$R))
+        Yl <- Y - CI.Y # Lower range for Y
+        Yu <- Y + CI.Y # Upper range for Y
+        # Transform Y to Q and put in a data.table
+        rec <- data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                          X, Xl, Xu,
+                          Q = exp(Y),
+                          Ql = exp(Yl),
+                          Qu = exp(Yu))
 
-    ans <- list(rec = rec, theta = theta)
-    if (return.init) ans$init <- results$init
-
-    return(ans)
+        ans <- list(rec = rec, theta = theta, lik = lik)
+        if (return.init) ans$init <- results$init
+        ans
+    })
 }
 
 #' Cross validate LDS model
