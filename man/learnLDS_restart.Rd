@@ -27,8 +27,8 @@ log-likelihood is returned. Default is TRUE.}
 (using the doParallel backend). If FALSE, the computation is done serially.}
 }
 \value{
-a list as produced by \code{[learnLDS]}. If return.init is true, a vector of initial condition is included in the list as well.
+a list as produced by \link{learnLDS}. If return.init is true, a vector of initial condition is included in the list as well.
 }
 \description{
-This is the backend computation for \code{[LDS_reconstruction]}.
+This is the backend computation for \link{LDS_reconstruction}.
 }
