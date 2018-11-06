@@ -122,14 +122,18 @@ cvLDS <- function(Qa, u, v, init = NULL, num.restart = 20,
         Z <- replicate(n.reps, sample(obs.ind, k), simplify = F)
         Z2 <- lapply(Z, '-', n.paleo)
     } else {
-        z2 <- Z
+        Z2 <- Z
         Z <- lapply(Z2, '+', n.paleo)
     }
     # Randomize initial conditions if not given
-    if (is.null(init))
+    if (is.null(init)) {
         init <- replicate(num.restart,
                           runif(4, min = c(0, -1, 0, -1), max = c(0.9, 1, 1, 1)),
                           simplify = F)
+    } else {
+        if (!is.list(init)) # learnLDS expects init is a list
+            init <- list(init)
+    }
 
     if (parallel)  {
         nbCores <- detectCores()
