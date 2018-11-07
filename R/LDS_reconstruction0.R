@@ -61,8 +61,11 @@ LDS_reconstruction0 <- function(Qa, u, v, init = NULL, num.restart = 100,
 
     # Randomize initial conditions if not given
     if (is.null(init)) {
+        d <- nrow(u)
         init <- replicate(num.restart,
-                          runif(4, min = c(0, -1, 0, -1), max = c(0.9, 1, 1, 1)),
+                          runif(1 + d + 1 + d,
+                                min = c(0, rep(-1, d), 0, rep(-1, d)),
+                                max = c(1, rep( 1, d), 1, rep( 1, d))),
                           simplify = F)
     } else {
         if (!is.list(init)) # learnLDS expects init is a list
@@ -127,8 +130,11 @@ cvLDS0 <- function(Qa, u, v, init = NULL, num.restart = 20,
     }
     # Randomize initial conditions if not given
     if (is.null(init)) {
+        d <- nrow(u)
         init <- replicate(num.restart,
-                          runif(4, min = c(0, -1, 0, -1), max = c(0.9, 1, 1, 1)),
+                          runif(1 + d + 1 + d,
+                                min = c(0, rep(-1, d), 0, rep(-1, d)),
+                                max = c(1, rep( 1, d), 1, rep( 1, d))),
                           simplify = F)
     } else {
         if (!is.list(init)) # learnLDS expects init is a list

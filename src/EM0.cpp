@@ -193,10 +193,16 @@ List Mstep0(arma::mat y, arma::mat u, arma::mat v, List fit) {
 List learnLDS0(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, double tol) {
 
     int d = u.n_rows;
-    mat A(1, 1); A.fill(init[0]);
-    mat B(1, d); B.fill(init[1]);
-    mat C(1, 1); C.fill(init[2]);
-    mat D(1, d); D.fill(init[3]);
+    mat A(1, 1); A.fill(init(0));
+    mat B(1, d);
+    for (int i = 0; i < d; i++) {
+        B(0,i) = init(i + 1);
+    }
+    mat C(1, 1); C.fill(init(d+1));
+    mat D(1, d);
+    for (int i = 0; i < d; i++) {
+        D(0,i) = init(i+d+2);
+    }
     mat Q(1, 1, fill::ones);
     mat R(1, 1, fill::ones);
     mat mu1(1, 1, fill::zeros);

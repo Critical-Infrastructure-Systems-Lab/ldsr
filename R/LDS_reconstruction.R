@@ -61,8 +61,11 @@ LDS_reconstruction <- function(Qa, u, v, init = NULL, num.restart = 100,
 
     # Randomize initial conditions if not given
     if (is.null(init)) {
+        d <- nrow(u)
         init <- replicate(num.restart,
-                          runif(4, min = c(0, -1, 0, -1), max = c(0.9, 1, 1, 1)),
+                          runif(1 + d + 1 + d,
+                                min = c(0, rep(-1, d), 0, rep(-1, d)),
+                                max = c(1, rep( 1, d), 1, rep( 1, d))),
                           simplify = F)
     } else {
         if (!is.list(init)) # learnLDS expects init is a list
@@ -72,9 +75,16 @@ LDS_reconstruction <- function(Qa, u, v, init = NULL, num.restart = 100,
     mu <- mean(log(Qa$Qa), na.rm = T)
     n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
     y <- t(c(rep(NA, n.paleo), log(Qa$Qa) - mu))
-    # Learn multiple models and select the best one
-    results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel)
-    # Construct 95% confidence intervals
+    # Learn multiple models and select the best one. Run in parallel mode if the init list is long
+    if (parallel && length(init) > 10) {
+        results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE)
+    } else {
+        if (parallel)
+            warning('Initial condition list is short, learnLDS_restart() is run in sequential mode.')
+        results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
+    }
+
+    # Construct 95% confidence intervals and return
     with(results, {
         X <- as.vector(fit$X)
         V <- as.vector(fit$V)
@@ -127,8 +137,11 @@ cvLDS <- function(Qa, u, v, init = NULL, num.restart = 20,
     }
     # Randomize initial conditions if not given
     if (is.null(init)) {
+        d <- nrow(u)
         init <- replicate(num.restart,
-                          runif(4, min = c(0, -1, 0, -1), max = c(0.9, 1, 1, 1)),
+                          runif(1 + d + 1 + d,
+                                min = c(0, rep(-1, d), 0, rep(-1, d)),
+                                max = c(1, rep( 1, d), 1, rep( 1, d))),
                           simplify = F)
     } else {
         if (!is.list(init)) # learnLDS expects init is a list
@@ -142,14 +155,14 @@ cvLDS <- function(Qa, u, v, init = NULL, num.restart = 20,
         cv.results <- foreach(omit = Z) %dopar% {
             y2 <- y
             y2[omit] <- NA
-            learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE)
+            learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
         }
         stopCluster(cl)
     } else {
         cv.results <- lapply(Z, function(omit) {
             y2 <- y
             y2[omit] <- NA
-            learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE)
+            learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
         })
     }
 
