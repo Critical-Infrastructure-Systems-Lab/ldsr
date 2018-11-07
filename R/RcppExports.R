@@ -44,3 +44,28 @@ learnLDS <- function(y, u, v, init, niter, tol) {
     .Call(`_ldsr_learnLDS`, y, u, v, init, niter, tol)
 }
 
+#' Implement Kalman smoothing
+#'
+#' This is different from Kalman_smoother in that here we assume perfect prediction.
+#' This function is experimental, do not use.
+#'
+NULL
+
+#' Maximizing expected likelihood using analytical solution
+#'
+#' This is different from Mstep in that here we assume perfect prediction.
+#' This function is experimental, do not use.
+#'
+NULL
+
+#' Learn LDS model
+#'
+#' Estimate the hidden state and model parameters given observations and exogeneous inputs using the EM algorithm. This is the key backend routine of this package.
+#'
+#' This is different from learnLDS in that here we assume perfect prediction.
+#' This function is experimental, do not use.
+#'
+learnLDS0 <- function(y, u, v, init, niter, tol) {
+    .Call(`_ldsr_learnLDS0`, y, u, v, init, niter, tol)
+}
+

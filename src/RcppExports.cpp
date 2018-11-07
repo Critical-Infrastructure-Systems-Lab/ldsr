@@ -50,11 +50,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// learnLDS0
+List learnLDS0(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, double tol);
+RcppExport SEXP _ldsr_learnLDS0(SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP initSEXP, SEXP niterSEXP, SEXP tolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type v(vSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type init(initSEXP);
+    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(learnLDS0(y, u, v, init, niter, tol));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_ldsr_Kalman_smoother", (DL_FUNC) &_ldsr_Kalman_smoother, 4},
     {"_ldsr_Mstep", (DL_FUNC) &_ldsr_Mstep, 4},
     {"_ldsr_learnLDS", (DL_FUNC) &_ldsr_learnLDS, 6},
+    {"_ldsr_learnLDS0", (DL_FUNC) &_ldsr_learnLDS0, 6},
     {NULL, NULL, 0}
 };
 
