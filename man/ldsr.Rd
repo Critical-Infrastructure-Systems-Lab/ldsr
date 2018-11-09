@@ -8,3 +8,13 @@
 \description{
 Reconstruct paleoclimate variables (streamflow, precipitation, etc...) with linear dynamical systems
 }
+\author{
+\strong{Maintainer}: Hung Nguyen \email{ntthung@gmail.com}
+
+Authors:
+\itemize{
+  \item Stefano Galelli \email{stefano_galelli@sutd.edu.sg}
+}
+
+}
+\keyword{internal}

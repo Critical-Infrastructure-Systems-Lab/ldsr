@@ -13,6 +13,8 @@
 #' @importFrom Rcpp evalCpp
 #' @importFrom hydroGOF ssq NSE KGE rmse
 #' @useDynLib ldsr, .registration = TRUE
+#' @keywords internal
+"_PACKAGE"
 NULL
 
 .onUnload <- function(libpath) {

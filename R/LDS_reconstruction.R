@@ -55,35 +55,42 @@ learnLDS_restart <- function(y, u, v, init,
 #'     - Q: the reconstructed streamflow
 #'     - Ql, Qu: lower and upper range for the 95% confidence interval of Q
 #' @export
-LDS_reconstruction <- function(Qa, u, v, init = NULL, num.restart = 100,
+LDS_reconstruction <- function(Qa, u, v, lambda = 1,
+                               method = c('EM', 'GA'),
+                               init = NULL, num.restart = 100,
                                niter = 1000, tol = 1e-5, return.init = TRUE,
                                parallel = FALSE) {
 
-    # Randomize initial conditions if not given
-    if (is.null(init)) {
-        d <- nrow(u)
-        init <- replicate(num.restart,
-                          runif(1 + d + 1 + d,
-                                min = c(0, rep(-1, d), 0, rep(-1, d)),
-                                max = c(1, rep( 1, d), 1, rep( 1, d))),
-                          simplify = F)
-    } else {
-        if (!is.list(init)) # learnLDS expects init is a list
-            init <- list(init)
-    }
     # Attach NA and make the y matrix
     mu <- mean(log(Qa$Qa), na.rm = T)
     n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
     y <- t(c(rep(NA, n.paleo), log(Qa$Qa) - mu))
-    # Learn multiple models and select the best one. Run in parallel mode if the init list is long
-    if (parallel && length(init) > 10) {
-        results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE)
-    } else {
-        if (parallel)
-            warning('Initial condition list is short, learnLDS_restart() is run in sequential mode.')
-        results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
-    }
 
+    if (method == 'EM') {
+        # Randomize initial conditions if not given
+        if (is.null(init)) {
+            d <- nrow(u)
+            init <- replicate(num.restart,
+                              runif(1 + d + 1 + d,
+                                    min = c(0, rep(-1, d), 0, rep(-1, d)),
+                                    max = c(1, rep( 1, d), 1, rep( 1, d))),
+                              simplify = F)
+        } else {
+            if (!is.list(init)) # learnLDS expects init is a list
+                init <- list(init)
+        }
+
+        # Learn multiple models and select the best one. Run in parallel mode if the init list is long
+        if (parallel && length(init) > 10) {
+            results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE)
+        } else {
+            if (parallel)
+                warning('Initial condition list is short, learnLDS_restart() is run in sequential mode.')
+            results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
+        }
+    } else {
+        results <- GAEM_LDS(y, u, v, lambda, niter = niter, pop.size = 100, parallel = parallel)
+    }
     # Construct 95% confidence intervals and return
     with(results, {
         X <- as.vector(fit$X)
@@ -116,8 +123,11 @@ LDS_reconstruction <- function(Qa, u, v, init = NULL, num.restart = 100,
 #'   * init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts
 #'   * Z: a list of n.reps elements, each is a vector of length k. If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created
 #' @export
-cvLDS <- function(Qa, u, v, init = NULL, num.restart = 20,
+cvLDS <- function(Qa, u, v, method = c('EM', 'GA'),
+                  init = NULL, num.restart = 20,
+                  lambda = 1,
                   k, n.reps = 100, niter = 1000, tol = 1e-5, Z = NULL,
+                  reupdate = FALSE,
                   parallel = F) {
 
     mu <- mean(log(Qa$Qa), na.rm = T)
@@ -135,51 +145,57 @@ cvLDS <- function(Qa, u, v, init = NULL, num.restart = 20,
         Z2 <- Z
         Z <- lapply(Z2, '+', n.paleo)
     }
-    # Randomize initial conditions if not given
-    if (is.null(init)) {
-        d <- nrow(u)
-        init <- replicate(num.restart,
-                          runif(1 + d + 1 + d,
-                                min = c(0, rep(-1, d), 0, rep(-1, d)),
-                                max = c(1, rep( 1, d), 1, rep( 1, d))),
-                          simplify = F)
-    } else {
-        if (!is.list(init)) # learnLDS expects init is a list
-            init <- list(init)
+
+    one_CV <- function(omit, y, u, v, method, init, num.restart, lambda, niter, tol) {
+        y2 <- y
+        y2[omit] <- NA
+        if (method == 'EM') {
+            # Randomize initial conditions if not given
+            if (is.null(init)) {
+                d <- nrow(u)
+                init <- replicate(num.restart,
+                                  runif(1 + d + 1 + d,
+                                        min = c(0, rep(-1, d), 0, rep(-1, d)),
+                                        max = c(1, rep( 1, d), 1, rep( 1, d))),
+                                  simplify = F)
+            } else {
+                if (!is.list(init)) # learnLDS expects init is a list
+                    init <- list(init)
+            }
+            ans <- learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
+            if (reupdate) {
+                ans$fit <- Kalman_smoother(y, u, v, ans$theta)
+            }
+            ans
+        } else {
+            GAEM_LDS(y2, u, v, lambda, num.restart = num.restart, niter = niter, parallel = FALSE)
+        }
     }
 
     if (parallel)  {
         nbCores <- detectCores()
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
-        cv.results <- foreach(omit = Z) %dopar% {
-            y2 <- y
-            y2[omit] <- NA
-            learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
-        }
+        cv.results <- foreach(omit = Z) %dopar%
+            one_CV(omit, y, u, v, method, init, num.restart, lambda, niter, tol)
         stopCluster(cl)
     } else {
-        cv.results <- lapply(Z, function(omit) {
-            y2 <- y
-            y2[omit] <- NA
-            learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
-        })
+        cv.results <- lapply(Z, function(omit)
+            one_CV(omit, y, u, v, method, init, num.restart, lambda, niter, tol))
     }
 
     fit <- lapply(cv.results, '[[', 'fit')
     Y <- lapply(fit, '[[', 'Y') %>% lapply(function(v) as.vector(v)[obs.ind])
     Q <- lapply(Y, function(v) exp(v + mu))
-    all.Q <- rbindlist(lapply(1:n.reps, function(i) data.table(rep = i,
-                                                            year = Qa$year,
-                                                            Q = Q[[i]])))
+    all.Q <- rbindlist(lapply(1:n.reps, function(i)
+        data.table(rep = i, year = Qa$year, Q = Q[[i]])))
     cvQ <- rbindlist(lapply(1:n.reps, function(i) {
         ind <- Z2[[i]]
         data.table(rep = i,
                    year = ind + Qa$year[1] - 1,
                    cvQ = Q[[i]][ind],
                    cvObs = Qa$Qa[ind])
-    }
-    ))
+    }))
     metrics.dist <- rbindlist(lapply(1:n.reps,
                                      function(i) calculate_metrics(Q[[i]], Qa$Qa, Z2[[i]])))
 

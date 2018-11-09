@@ -4,8 +4,9 @@
 \alias{LDS_reconstruction}
 \title{Learn LDS model with multiple initial conditions}
 \usage{
-LDS_reconstruction(Qa, u, v, init = NULL, num.restart = 100,
-  niter = 1000, tol = 1e-05, return.init = TRUE, parallel = FALSE)
+LDS_reconstruction(Qa, u, v, lambda = 1, method = c("EM", "GA"),
+  init = NULL, num.restart = 100, niter = 1000, tol = 1e-05,
+  return.init = TRUE, parallel = FALSE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
