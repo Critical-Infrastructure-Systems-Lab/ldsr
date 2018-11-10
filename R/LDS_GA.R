@@ -2,7 +2,6 @@
 #'
 #' @param theta.vec a vector of parameter elements
 #' @param d dimention of inputs
-#' @keywords internal
 vec_to_list <- function(theta.vec, d) {
     d2 <- d*2
     list(A = matrix(theta.vec[1]),
@@ -11,8 +10,8 @@ vec_to_list <- function(theta.vec, d) {
          D = matrix(theta.vec[(d+3):(d2+2)], 1, d),
          Q = matrix(theta.vec[d2+3]),
          R = matrix(theta.vec[d2+4]),
-         mu1 = matrix(theta.vec[d2+5]),
-         V1 = matrix(theta.vec[d2+6]))
+         mu1 = matrix(0),
+         V1 = matrix(theta.vec[d2+5]))
 }
 
 #' Penalized likelihood objective function
@@ -44,15 +43,15 @@ penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
 
 #' Learn a linear dynamical system using Genetic Algorithm
 
-LDS_GA <- function(y, u, v, lambda = 1, num.islands = 10, niter = 100, pop.size = 100, parallel = TRUE) {
+LDS_GA <- function(y, u, v, lambda = 1, num.islands = 10, niter = 100, pop.size = 250, parallel = TRUE) {
 
     # Upper and lower bounds
     lb <- c(0.1,   -1, -1, -1, -1, -1, 0.001, -1,
             0.001, -1, -1, -1, -1, -1, 0.001, -1,
-            0.001, 0.001, 0, 0.001)
+            0.001, 0.001, 0.001)
     ub <- c(0.999, -0.001, -0.001, -0.001, -0.001, -0.001, 1, -0.001,
             0.999, -0.001, -0.001, -0.001, -0.001, -0.001, 1, -0.001,
-            10, 1, 0, 1)
+            10, 1, 1)
     # Run genetic algorithm
     d <- nrow(u)
     GA <- GA::gaisl(type = 'real-valued',
@@ -60,7 +59,7 @@ LDS_GA <- function(y, u, v, lambda = 1, num.islands = 10, niter = 100, pop.size 
              lower = lb,
              upper = ub,
              popSize = pop.size,
-             numIslands = num.restart,
+             numIslands = num.islands,
              migrationRate = 0,
              names = c('A', paste0('B', 1:d), 'C', paste0('D', 1:d), 'Q', 'R', 'mu1', 'V1'),
              run = 100,
