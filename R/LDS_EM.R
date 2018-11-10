@@ -19,10 +19,10 @@ LDS_EM_restart <- function(y, u, v, init,
         nbCores <- detectCores()
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
-        models <- foreach(init.val = init) %dopar% learnLDS(y, u, v, init.val, niter, tol)
+        models <- foreach(init.val = init) %dopar% LDS_EM(y, u, v, init.val, niter, tol)
         stopCluster(cl)
     } else {
-        models <- lapply(init, function(init.val) learnLDS(y, u, v, init.val, niter, tol))
+        models <- lapply(init, function(init.val) LDS_EM(y, u, v, init.val, niter, tol))
     }
 
     # Select the model with highest likelihood
