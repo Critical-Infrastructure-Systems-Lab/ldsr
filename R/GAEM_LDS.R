@@ -42,7 +42,9 @@ penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
     ks.result$lik - lambda * ssq / sum(is.na(y))
 }
 
-GAEM_LDS <- function(y, u, v, lambda = 1, num.restart = 10, niter = 100, pop.size = 100, parallel = TRUE) {
+#' Learn a linear dynamical system using Genetic Algorithm
+
+LDS_GA <- function(y, u, v, lambda = 1, num.islands = 10, niter = 100, pop.size = 100, parallel = TRUE) {
 
     # Upper and lower bounds
     lb <- c(0.1,   -1, -1, -1, -1, -1, 0.001, -1,
