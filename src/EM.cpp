@@ -203,7 +203,7 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
 //' * lik : log-likelihood
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 // [[Rcpp::export]]
-List learnLDS(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, double tol) {
+List LDS_EM(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, double tol) {
 
     int d = u.n_rows;
     mat A(1, 1); A.fill(init(0));
