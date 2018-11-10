@@ -53,3 +53,20 @@ plot_reconstruction(fit$rec, Qa, 'full')
 plot_reconstruction(fit$rec, Qa, 'inst')
 
 cv <- cvLDS(Qa, u, v, lambda = 1, method = 'GA', num.restart = 2, n.reps = 8, parallel = TRUE)
+
+# Package calls
+fit <- LDS_reconstruction(Qa, u, v, method = 'EM')
+fit <- LDS_reconstruction(Qa, u, v, method = 'GA')
+fit <- LDS_reconstruction(Qa, u, v, method = 'BFGS')
+fit <- LDS_reconstruction(Qa, u, v, method = 'abcd')
+
+check <- function(x) {
+    if (is.list(x))
+        "list"
+    else
+        "not list"
+
+}
+check(list(a = 1, b = 2, c = 3))
+check(c(a = 1, b = 2, c = 3))
+

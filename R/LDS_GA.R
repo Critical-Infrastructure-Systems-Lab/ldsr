@@ -43,7 +43,7 @@ penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
 
 #' Learn a linear dynamical system using Genetic Algorithm
 
-LDS_GA <- function(y, u, v, lambda = 1, num.islands = 10, niter = 100, pop.size = 250, parallel = TRUE) {
+LDS_GA <- function(y, u, v, lambda = 1, num.islands = 4, pop.size = 250, niter = 1000, parallel = TRUE) {
 
     # Upper and lower bounds
     lb <- c(0.1,   -1, -1, -1, -1, -1, 0.001, -1,

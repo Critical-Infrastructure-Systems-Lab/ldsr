@@ -45,7 +45,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
                                parallel = TRUE) {
 
     # Attach NA and make the y matrix
-    mu <- mean(log(Qa$Qa), na.rm = T)
+    mu <- mean(log(Qa$Qa), na.rm = TRUE)
     n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
     y <- t(c(rep(NA, n.paleo), log(Qa$Qa) - mu))
 
@@ -62,7 +62,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
             }
         },
         GA = {
-            LDS_GA(y, u, v, lambda, niter = niter, pop.size = 100, parallel = parallel)
+            LDS_GA(y, u, v, lambda, num.islands, pop.size, niter, parallel)
         },
         BFGS = {
             stop("BFGS has not been implemented. Please choose either EM or GA for now.")
@@ -105,10 +105,10 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
 #'   * Z: a list of n.reps elements, each is a vector of length k. If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created
 #' @export
 cvLDS <- function(Qa, u, v, method = 'EM',
-                  init = NULL, num.restarts = 20,
-                  lambda = 1,
-                  k, n.reps = 100, niter = 1000, tol = 1e-5, Z = NULL,
-                  parallel = TRUE) {
+                  k, n.reps = 100, Z = NULL,
+                  init = NULL, num.restarts = 100,
+                  lambda = 1, num.islands = 4, pop.size = 250,
+                  niter = 1000, tol = 1e-5, parallel = TRUE) {
 
     mu <- mean(log(Qa$Qa), na.rm = TRUE)
     n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
@@ -126,7 +126,7 @@ cvLDS <- function(Qa, u, v, method = 'EM',
         Z <- lapply(Z2, '+', n.paleo)
     }
 
-    one_CV <- function(omit, y, u, v, method, init, num.restarts, lambda, niter, tol) {
+    one_CV <- function(omit, method, y, u, v, init, num.restarts, lambda, num.islands, pop.size, niter, tol) {
         y2 <- y
         y2[omit] <- NA
         # Parallel is run at the outer loop, i.e. for each cross-validation run
@@ -136,7 +136,7 @@ cvLDS <- function(Qa, u, v, method = 'EM',
                 LDS_EM_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
             },
             GA = {
-                LDS_GA(y2, u, v, lambda, num.restarts = num.restarts, niter = niter, parallel = FALSE)
+                LDS_GA(y2, u, v, lambda, num.islands, pop.size, niter, parallel = FALSE)
             },
             BFGS = {
                 stop("BFGS has not been implemented. Please choose either EM or GA for now.")
@@ -152,11 +152,11 @@ cvLDS <- function(Qa, u, v, method = 'EM',
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
         cv.results <- foreach(omit = Z) %dopar%
-            one_CV(omit, y, u, v, method, init, num.restarts, lambda, niter, tol)
+            one_CV(omit, method, y, u, v, init, num.restarts, lambda, num.islands, pop.size, niter, tol)
         stopCluster(cl)
     } else {
         cv.results <- lapply(Z, function(omit)
-            one_CV(omit, y, u, v, method, init, num.restarts, lambda, niter, tol))
+            one_CV(omit, method, y, u, v, init, num.restarts, lambda, num.islands, pop.size, niter, tol))
     }
 
     fit <- lapply(cv.results, '[[', 'fit')
