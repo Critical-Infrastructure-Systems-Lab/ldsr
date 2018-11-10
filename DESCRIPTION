@@ -24,3 +24,5 @@ Roxygen:
 LinkingTo: 
     Rcpp,
     RcppArmadillo
+URL: https://github.com/ntthung/ldsr
+BugReports: https://github.com/ntthung/ldsr/issues
