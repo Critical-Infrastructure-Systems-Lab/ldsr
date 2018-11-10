@@ -8,6 +8,14 @@
 \description{
 Reconstruct paleoclimate variables (streamflow, precipitation, etc...) with linear dynamical systems
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/ntthung/ldsr}
+  \item Report bugs at \url{https://github.com/ntthung/ldsr/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Hung Nguyen \email{ntthung@gmail.com}
 

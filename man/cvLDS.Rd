@@ -4,9 +4,9 @@
 \alias{cvLDS}
 \title{Cross validate LDS model}
 \usage{
-cvLDS(Qa, u, v, method = c("EM", "GA"), init = NULL,
-  num.restart = 20, lambda = 1, k, n.reps = 100, niter = 1000,
-  tol = 1e-05, Z = NULL, reupdate = FALSE, parallel = F)
+cvLDS(Qa, u, v, method = "EM", init = NULL, num.restart = 20,
+  lambda = 1, k, n.reps = 100, niter = 1000, tol = 1e-05,
+  Z = NULL, reupdate = FALSE, parallel = F)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
