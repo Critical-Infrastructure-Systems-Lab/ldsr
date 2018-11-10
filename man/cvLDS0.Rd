@@ -16,8 +16,6 @@ cvLDS0(Qa, u, v, init = NULL, num.restart = 20, k, n.reps = 100,
 
 \item{init}{A list of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.}
 
-\item{num.restart}{if init is not given then num.restart must be provided. In this case the function will randomize the initial value by sampling uniformly within the range for each parameters (A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).}
-
 \item{niter}{Maximum number of iterations, default 1000}
 
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.}
