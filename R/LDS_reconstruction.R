@@ -4,13 +4,14 @@
 #' @inheritParams learnLDS
 #' @param return.init Indicate whether the initial condition that results in the highest
 #' log-likelihood is returned. Default is TRUE.
+#' @inheritParams GAEM_LDS
 #' @param niter Maximum number of iterations, default 1000
 #' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
 #' @param parallel If TRUE, the computation is done in parallel using all available cores
 #' (using the doParallel backend). If FALSE, the computation is done serially.
 #' @return a list as produced by [learnLDS]. If return.init is true, a vector of initial condition is included in the list as well.
 #' @export
-learnLDS_restart <- function(y, u, v, init,
+LDS_EM_restart <- function(y, u, v, init,
                              niter = 1000, tol = 1e-5, return.init = TRUE,
                              parallel = FALSE) {
 
@@ -45,20 +46,21 @@ learnLDS_restart <- function(y, u, v, init,
 #'
 #' The initial conditions can either be randomized (specifiled by num.restart) or provided beforehand.
 #' @param Qa Observations: a data.table of annual streamflow with at least two columns: year and Qa.
-#' @inheritParams learnLDS_restart
-#' @param num.restart if init is not given then num.restart must be provided. In this case the function will randomize the initial value by sampling uniformly within the range for each parameters (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
+#' @inheritParams LDS_EM_restart
+#' @param method Either EM or GA (note: GA is experimental)
+#' @param num.restarts if init is not given then num.restarts must be provided. In this case the function will randomize the initial value by sampling uniformly within the range for each parameters (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
 #' @return A list of the following elements
 #' * rec: reconstruction results, a data.table with the following columns
 #'     - year: calculated from Qa and the length of u
 #'     - X: the estimated hidden state
-#'     - Xl, Xu: lower and upper range for the 95% confidence interval of X
+#'     - Xl, Xu: lower and upper range for the 95\% confidence interval of X
 #'     - Q: the reconstructed streamflow
-#'     - Ql, Qu: lower and upper range for the 95% confidence interval of Q
+#'     - Ql, Qu: lower and upper range for the 95\% confidence interval of Q
 #' @export
-LDS_reconstruction <- function(Qa, u, v, lambda = 1,
-                               method = c('EM', 'GA'),
-                               init = NULL, num.restart = 100,
-                               niter = 1000, tol = 1e-5, return.init = TRUE,
+LDS_reconstruction <- function(Qa, u, v, method = 'EM',
+                               init = NULL, num.restarts = 100, return.init = TRUE,
+                               lambda = 1, num.islands = 10, pop.size = 250,
+                               niter = 1000, tol = 1e-5,
                                parallel = FALSE) {
 
     # Attach NA and make the y matrix
@@ -82,14 +84,14 @@ LDS_reconstruction <- function(Qa, u, v, lambda = 1,
 
         # Learn multiple models and select the best one. Run in parallel mode if the init list is long
         if (parallel && length(init) > 10) {
-            results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE)
+            results <- LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE)
         } else {
             if (parallel)
                 warning('Initial condition list is short, learnLDS_restart() is run in sequential mode.')
-            results <- learnLDS_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
+            results <- LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
         }
     } else {
-        results <- GAEM_LDS(y, u, v, lambda, niter = niter, pop.size = 100, parallel = parallel)
+        results <- LDS_GA(y, u, v, lambda, niter = niter, pop.size = 100, parallel = parallel)
     }
     # Construct 95% confidence intervals and return
     with(results, {
@@ -162,13 +164,13 @@ cvLDS <- function(Qa, u, v, method = c('EM', 'GA'),
                 if (!is.list(init)) # learnLDS expects init is a list
                     init <- list(init)
             }
-            ans <- learnLDS_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
+            ans <- LDS_EM_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
             if (reupdate) {
                 ans$fit <- Kalman_smoother(y, u, v, ans$theta)
             }
             ans
         } else {
-            GAEM_LDS(y2, u, v, lambda, num.restart = num.restart, niter = niter, parallel = FALSE)
+            LDS_GA(y2, u, v, lambda, num.restart = num.restart, niter = niter, parallel = FALSE)
         }
     }
 
