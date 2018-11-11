@@ -14,4 +14,3 @@ vec_to_list(theta.vec, d)
 \description{
 Converts theta from a vector (as used in GA) to list (as used in Kalman smoothing)
 }
-\keyword{internal}
