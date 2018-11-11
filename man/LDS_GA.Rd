@@ -4,8 +4,8 @@
 \alias{LDS_GA}
 \title{Learn a linear dynamical system using Genetic Algorithm}
 \usage{
-LDS_GA(y, u, v, lambda = 1, num.islands = 10, niter = 100,
-  pop.size = 100, parallel = TRUE)
+LDS_GA(y, u, v, lambda = 1, num.islands = 4, pop.size = 250,
+  niter = 1000, parallel = TRUE)
 }
 \description{
 Learn a linear dynamical system using Genetic Algorithm
