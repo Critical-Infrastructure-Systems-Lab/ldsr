@@ -7,7 +7,7 @@
 LDS_reconstruction(Qa, u, v, method = "EM", init = NULL,
   num.restarts = 100, return.init = TRUE, lambda = 1,
   num.islands = 10, pop.size = 250, niter = 1000, tol = 1e-05,
-  parallel = FALSE)
+  parallel = TRUE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
@@ -20,7 +20,9 @@ LDS_reconstruction(Qa, u, v, method = "EM", init = NULL,
 
 \item{init}{A list of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.}
 
-\item{num.restarts}{if init is not given then num.restarts must be provided. In this case the function will randomize the initial value by sampling uniformly within the range for each parameters (A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).}
+\item{num.restarts}{if init is not given then num.restarts must be provided. In this case the function
+will randomize the initial value by sampling uniformly within the range for each parameters
+(A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).}
 
 \item{return.init}{Indicate whether the initial condition that results in the highest
 log-likelihood is returned. Default is TRUE.}
@@ -46,5 +48,5 @@ A list of the following elements
 }
 }
 \description{
-The initial conditions can either be randomized (specifiled by num.restart) or provided beforehand.
+The initial conditions can either be randomized (specifiled by num.restarts) or provided beforehand.
 }
