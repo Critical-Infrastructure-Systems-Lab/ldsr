@@ -9,7 +9,6 @@
 make_init <- function(init, d, num.restarts) {
 
     if (is.null(init)) {
-        d <- nrow(u)
         replicate(num.restarts,
                   runif(1 + d + 1 + d,
                         min = c(0, rep(-1, d), 0, rep(-1, d)),
@@ -58,7 +57,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
             } else {
                 if (parallel)
                     warning('Initial condition list is short, LDS_EM_restart() is run in sequential mode.')
-                results <- LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
+                LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
             }
         },
         GA = {
