@@ -6,12 +6,13 @@
 #' @import data.table
 #' @import ggplot2
 #' @importFrom cowplot plot_grid
-#' @importFrom magrittr %>%
-#' @importFrom parallel detectCores makeCluster stopCluster
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar%
-#' @importFrom Rcpp evalCpp
 #' @importFrom hydroGOF ssq NSE KGE rmse
+#' @importFrom magrittr %>%
+#' @importFrom parallel detectCores makeCluster stopCluster
+#' @importFrom Rcpp evalCpp sourceCpp
+#' @importFrom stats runif var
 #' @useDynLib ldsr, .registration = TRUE
 #' @keywords internal
 "_PACKAGE"
