@@ -1,0 +1,179 @@
+---
+title: "Streamflow Reconstruction with Linear Dynamical Systems"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+old.opts <- getOption('digits')
+options(digits = 4)
+suppressWarnings(library(ldsr))  # This package
+suppressWarnings(library(data.table)) # The package leverages the efficient `data.table` so we will use it in this vignette.
+suppressWarnings(library(ggplot2)) # Plotting
+suppressWarnings(library(cowplot)) # Plotting multiple panels in a figure
+```
+
+# Introduction
+
+This package facilitates streamflow reconstruction with linear dynamical system. The streamflow process is modelled as
+$$
+\begin{align}
+    x_{t+1} &= Ax_t + Bu_t + q_t\\
+    y_t &= Cx_t + Dv_t + r_t\\
+    q_t &\sim \mathcal{N}(0,Q)\\
+    r_t &\sim \mathcal{N}(0,R)\\
+    x_1 &\sim \mathcal{N}(\mu_1, V_1)
+\end{align}
+$$
+where $x_t$ is the system state (the flow regime of the catchment), $y_t$ the log-transformed and centralized streamflow, $u_t$ and $v_t$ the exogenous inputs, and $q_t$ and $r_t$ white noises. The system parameters are $\theta = (A, B, C, D, Q, R, \mu_1, V_1)$. Often, $u$ and $v$ are taken to be the same. For details, please refer to Nguyen and Galelli (2018).
+
+In this vignette, we will demonstrate the package using a case study that was published in Nguyen and Galelli (2018). Here, we reconstruct streamflow for the station P1 located in Chiang Mai, Thailand, along the Ping River. The climate proxy is the portion of the Monsoon Asia Drought Atlas (MADA) (Cook et al, 2010) that is within 1200 km of P1. The necessary data are already included in the package:
+
+* `P1annual` is a data frame recording annual streamflow measured at station P1, which was obtained from the Thai Royal Irrigation Department.
+* `P1pc` is the 12 leading principal components of the MADA surrounding P1. 
+
+**Some preparations:**
+We call some necessary packages
+
+```{r, eval=FALSE}
+library(ldsr)  # This package
+library(data.table) # The package leverages the efficient `data.table` so we will use it in this vignette.
+library(ggplot2) # Plotting
+library(cowplot) # Plotting multiple panels in a figure
+```
+
+# Benchmark
+
+First we create a benchmark reconstruction using Principal Component Regression.
+
+```{r}
+# Randomized cross validation points
+set.seed(123)
+Z <- replicate(100, sample(1:85, 9), simplify = F)
+# Build and cross-validate a PCR model
+bm <- PCR_reconstruction(P1annual, P1pc)
+```
+
+The following principal components were selected by the backward stepwise process
+```{r}
+bm$selected
+```
+
+We will use these principal components for the LDS model.
+
+# Streamflow reconstruction with linear dynamical systems
+
+First, we subset the selected principal components
+```{r}
+pc <- P1pc[ , bm$selected, with = FALSE]
+pc
+```
+
+Then, we create the input matrices `u` and `v`
+
+```{r}
+u <- v <- t(pc)
+```
+
+We are now ready to learn the LDS model. 
+
+## Model learning
+
+Since EM is a local search routine, we run it with multiple restarts, each of which has a different initial condition. For our problem, 1000 restarts is sufficient. Learning takes a couple of minutes on a quad-core 3.4 GHz desktop.
+
+```{r, eval=FALSE}
+set.seed(100)
+lds <- LDS_reconstruction(P1annual, u, v, num.restarts = 1000)
+```
+
+```{r, include=FALSE}
+lds <- ldsr:::P1model
+```
+Let's check the model results
+```{r}
+lds$theta
+lds$lik   
+lds$init
+```
+
+## Cross-validation
+
+This cross-validation procedure takes several hours on a quad-core 3.4 GHz desktop. The package has built-in parallel computing capability, so run it on on a cluster to reduce running time. Alternatively, you can also reduce the number of restarts.
+
+```{r, eval=FALSE}
+cv <- cvLDS(P1annual, u, v, Z = Z, num.restarts = 1000)
+```
+
+```{r, include=FALSE}
+cv <- ldsr:::P1cv
+```
+
+Let's compare the performance metrics
+
+```{r, fig.width=5, fig.height=5}
+dt1 <- bm$metrics.dist
+dt1[, model := 'Linear regression']
+dt2 <- cv$metrics.dist
+dt2[, model := 'LDS']
+dt <- rbind(dt1, dt2)
+dt <- melt(dt, id.vars = 'model', measure.vars = 1:4, variable.name = 'metric')
+
+ggplot(dt, aes(model, value)) +
+    geom_jitter(colour = 'gray70', width = 0.2) +
+    stat_summary(geom = 'point', fun.y = 'mean', colour = 'red') +
+    facet_wrap(~metric, scales = 'free') +
+    scale_x_discrete(name = "") +
+    theme(panel.grid = element_blank(),
+          panel.background = element_blank(),
+          panel.border = element_rect(colour = 'black', fill = NA, size = 0.8),
+          axis.text = element_text(size = 10),
+          text = element_text(size = 11)
+        )
+```
+
+## Reconstruction results
+
+### Reconstruction in the instrumental period
+
+The package comes with a `plot_reconstruction()` function to visualize the results. The function also allows comparison with a benchmark.
+
+```{r, fig.width=7, fig.height = 7}
+plot_reconstruction(s = lds$rec, target = P1annual, period = 'inst', benchmark = bm$rec)
+```
+
+
+### Full reconstruction results
+
+```{r fig.width=7, fig.height=7}
+plot_reconstruction(s = lds$rec, target = P1annual, period = 'full', benchmark = bm$rec)
+```
+
+# Stochastic streamflow generation
+
+Generate stochastic replicates
+
+```{r}
+set.seed(1000)
+reps <- LDS_rep(lds$theta, u, v, years = lds$rec$year, mu = mean(log(P1annual$Qa)))
+```
+
+Plot them
+
+```{r, fig.width=5, fig.height=5}
+plot_replicates(reps)
+```
+
+
+```{r, include=FALSE}
+# Return settings back to normal
+options(digits = old.opts)
+```
+
