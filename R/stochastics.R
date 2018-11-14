@@ -1,0 +1,88 @@
+#' One LDS replicate
+#'
+#' Generate a single stochastic time series from an LDS model
+#' @param rep.num The ID number of the replicate
+#' @inheritParams LDS_EM
+#' @param mu Mean of the log-transformed streamflow process
+#' @param years The years of the study horizon
+#' @param exp.trans Whether exponential transformation back to the streamflow space is required.
+#' If TRUE, both Y and Q are returned, otherwise only Y.
+#' @return A data.table. The first column is the years of the study horizon, as supplied by `year`.
+#' Subsequent columns are `simX`, `simY`, and `simQ` which are the simulated catchment state (X),
+#' log-transformed and centralized flow (Y) and flow (Q). The last column is the replicate ID number.
+#' @export
+one_LDS_rep <- function(rep.num, theta, u = NULL, v = NULL, years, mu = 0, exp.trans = TRUE) {
+
+    n <- length(years)
+    sim.X <- matrix(0, 1, n + 1)
+    sim.Y <- matrix(0, 1, n)
+    sim.X[, 1] <- rnorm(1, 0, sqrt(theta$V1))
+
+    q <- t(rnorm(n, 0, sqrt(theta$Q)))
+    r <- t(rnorm(n, 0, sqrt(theta$R)))
+
+    if (is.null(u)) {
+        for (t in 1:n) {
+            sim.X[, t + 1] <- theta$A %*% sim.X[,t] + q[,t]
+            sim.Y[, t    ] <- theta$C %*% sim.X[,t] + r[,t]
+        }
+    } else {
+        for (t in 1:n) {
+            sim.X[, t + 1] <- theta$A %*% sim.X[,t] + theta$B %*% u[, t] + q[t]
+            sim.Y[, t    ] <- theta$C %*% sim.X[,t] + theta$D %*% v[, t] + r[t]
+        }
+    }
+
+    if (exp.trans) sim.Q <- exp(sim.Y + mu) else sim.Q <- sim.Y + mu
+    out <- data.table(year = years,
+                      simX = as.vector(sim.X[, 1:n]),
+                      simY = as.vector(sim.Y),
+                      simQ = as.vector(sim.Q),
+                      rep  = rep(rep.num, n))
+    out
+}
+
+#' Multiple LDS replicates
+#'
+#' Generate multiple stochastic time series from an LDS model
+#' @inheritParams one_LDS_rep
+#' @param num.reps The number of stochastic replicates#'
+#' @return Same as [one_LDS_rep], but the data.table consists of multiple replicates.
+#' @export
+LDS_rep <- function(theta, u = NULL, v = NULL, years, num.reps = 100, mu = 0, exp.trans = TRUE) {
+
+    rbindlist(lapply(1:num.reps,
+                     function(i) one_LDS_rep(i, theta, u, v, years, mu, exp.trans)))
+
+}
+
+#' Plot stochastic replicates
+#'
+#' @param reps Results of [LDS_rep].
+#' @return A plot with two panels: stochastic replicates of streamflow and catchment state
+#' @export
+plot_replicates <- function(reps) {
+
+    # Plot streamflow
+    p <- ggplot(reps) +
+        geom_line(aes(year, simQ, group = rep), colour = 'gray80') +
+        geom_line(aes(year, Q), data = lds$rec, colour = 'black') +
+        labs(x = 'Year',
+             y = 'Annual streamflow, million m\u00B3') +
+        theme(text = element_text(size = 10),
+              plot.margin = unit(c(0.1, 0.1, 0.1, 0.6), 'cm')) +
+        panel_border('black')
+    # Plot catchment state
+    q <- ggplot(reps) +
+        geom_line(aes(year, simX, group = rep), colour = 'gray80') +
+        geom_line(aes(year, X), data = lds$rec, colour = 'black') +
+        labs(x = 'Year',
+             y = 'Flow regime') +
+        theme(text = element_text(size = 10),
+              plot.margin = unit(c(0.1, 0.1, 0.1, 0.6), 'cm')) +
+        panel_border('black')
+
+    plot_grid(p, q, ncol = 1, axis = 'r', align = 'v',
+              labels = c('(a)', '(b)'),
+              label_size = 10)
+}
