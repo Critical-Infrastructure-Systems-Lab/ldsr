@@ -12,13 +12,18 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 Imports:
-    data.table (>= 1.11.4),
-    doParallel (>= 1.0.11),
-    hydroGOF (>= 0.3.10),
-    Rcpp (>= 0.12.16),
-    cowplot (>= 0.9.2),
-    GA (>= 3.1.1)
-RoxygenNote: 6.1.0
+    cowplot,
+    data.table,
+    doParallel,
+    foreach,
+    GA,
+    ggplot2,
+    hydroGOF,
+    magrittr,
+    parallel,
+    Rcpp,
+    stats
+RoxygenNote: 6.1.1
 Roxygen:
     list(markdown = TRUE)
 LinkingTo: 
@@ -27,4 +32,7 @@ LinkingTo:
 URL: https://github.com/ntthung/ldsr
 BugReports: https://github.com/ntthung/ldsr/issues
 Suggests: 
-    testthat
+    testthat,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

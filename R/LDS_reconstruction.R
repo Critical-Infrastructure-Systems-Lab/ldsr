@@ -36,6 +36,9 @@ make_init <- function(init, d, num.restarts) {
 #'     - Xl, Xu: lower and upper range for the 95\% confidence interval of X
 #'     - Q: the reconstructed streamflow
 #'     - Ql, Qu: lower and upper range for the 95\% confidence interval of Q
+#' * theta: model parameters
+#' * lik: maximum likelihood
+#' * init: the initial condition that resulted in the maximum likelihood (if )
 #' @export
 LDS_reconstruction <- function(Qa, u, v, method = 'EM',
                                init = NULL, num.restarts = 100, return.init = TRUE,
@@ -99,12 +102,15 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
 #' Cross validate LDS model
 #'
 #' @inheritParams LDS_reconstruction
+#' @param k Numer of data points to be left out in each cross validation-run.
+#' @param CV.reps Number of cross-validation runs.
+#' @param Z A list of CV.reps elements, each is a vector of length k.See Details.
 #' @details Allows different experimental setups:
-#'   * init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts
-#'   * Z: a list of n.reps elements, each is a vector of length k. If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created
+#'   * init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts.
+#'   * Z: If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created.
 #' @export
 cvLDS <- function(Qa, u, v, method = 'EM',
-                  k, n.reps = 100, Z = NULL,
+                  k, CV.reps = 100, Z = NULL,
                   init = NULL, num.restarts = 100,
                   lambda = 1, num.islands = 4, pop.size = 250,
                   niter = 1000, tol = 1e-5, parallel = TRUE) {
@@ -118,7 +124,7 @@ cvLDS <- function(Qa, u, v, method = 'EM',
 
     if (missing(k)) k <- ceiling(n.obs / 10)
     if (is.null(Z)) {
-        Z <- replicate(n.reps, sample(obs.ind, k), simplify = F)
+        Z <- replicate(CV.reps, sample(obs.ind, k), simplify = F)
         Z2 <- lapply(Z, '-', n.paleo)
     } else {
         Z2 <- Z
@@ -161,16 +167,16 @@ cvLDS <- function(Qa, u, v, method = 'EM',
     fit <- lapply(cv.results, '[[', 'fit')
     Y <- lapply(fit, '[[', 'Y') %>% lapply(function(v) as.vector(v)[obs.ind])
     Q <- lapply(Y, function(v) exp(v + mu))
-    all.Q <- rbindlist(lapply(1:n.reps, function(i)
+    all.Q <- rbindlist(lapply(1:CV.reps, function(i)
         data.table(rep = i, year = Qa$year, Q = Q[[i]])))
-    cvQ <- rbindlist(lapply(1:n.reps, function(i) {
+    cvQ <- rbindlist(lapply(1:CV.reps, function(i) {
         ind <- Z2[[i]]
         data.table(rep = i,
                    year = ind + Qa$year[1] - 1,
                    cvQ = Q[[i]][ind],
                    cvObs = Qa$Qa[ind])
     }))
-    metrics.dist <- rbindlist(lapply(1:n.reps,
+    metrics.dist <- rbindlist(lapply(1:CV.reps,
                                      function(i) calculate_metrics(Q[[i]], Qa$Qa, Z2[[i]])))
 
     return(list(metrics.dist = metrics.dist,

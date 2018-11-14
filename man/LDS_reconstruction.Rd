@@ -45,6 +45,9 @@ A list of the following elements
 \item Q: the reconstructed streamflow
 \item Ql, Qu: lower and upper range for the 95\% confidence interval of Q
 }
+\item theta: model parameters
+\item lik: maximum likelihood
+\item init: the initial condition that resulted in the maximum likelihood (if )
 }
 }
 \description{

@@ -4,12 +4,16 @@
 \alias{plot_reconstruction}
 \title{Plot reconstruction results in the instrumental period or full period}
 \usage{
-plot_reconstruction(s, target, period)
+plot_reconstruction(s, target, period, benchmark = NULL)
 }
 \arguments{
 \item{s}{Reconstruction results for a site}
 
 \item{target}{Reconstruction target}
+
+\item{period}{Either 'inst' or 'full'}
+
+\item{benchmark}{A benchmark reconstruction results following the format of \code{PCR_reconstruction}}
 }
 \description{
 Plot reconstruction results in the instrumental period or full period

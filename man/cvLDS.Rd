@@ -4,7 +4,7 @@
 \alias{cvLDS}
 \title{Cross validate LDS model}
 \usage{
-cvLDS(Qa, u, v, method = "EM", k, n.reps = 100, Z = NULL,
+cvLDS(Qa, u, v, method = "EM", k, CV.reps = 100, Z = NULL,
   init = NULL, num.restarts = 100, lambda = 1, num.islands = 4,
   pop.size = 250, niter = 1000, tol = 1e-05, parallel = TRUE)
 }
@@ -16,6 +16,12 @@ cvLDS(Qa, u, v, method = "EM", k, n.reps = 100, Z = NULL,
 \item{v}{Input matrix for the output equation (m_v rows, T columns)}
 
 \item{method}{Either EM or GA (note: GA is experimental)}
+
+\item{k}{Numer of data points to be left out in each cross validation-run.}
+
+\item{CV.reps}{Number of cross-validation runs.}
+
+\item{Z}{A list of CV.reps elements, each is a vector of length k.See Details.}
 
 \item{init}{A list of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.}
 
@@ -36,7 +42,7 @@ Cross validate LDS model
 \details{
 Allows different experimental setups:
 \itemize{
-\item init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts
-\item Z: a list of n.reps elements, each is a vector of length k. If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created
+\item init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts.
+\item Z: If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created.
 }
 }
