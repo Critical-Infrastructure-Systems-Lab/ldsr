@@ -5,7 +5,7 @@
 #' @name ldsr
 #' @import data.table
 #' @import ggplot2
-#' @importFrom cowplot plot_grid
+#' @importFrom cowplot plot_grid panel_border
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar%
 #' @importFrom hydroGOF ssq NSE KGE rmse
