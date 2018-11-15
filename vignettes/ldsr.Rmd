@@ -3,7 +3,7 @@ title: "Streamflow Reconstruction with Linear Dynamical Systems"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{Streamflow Reconstruction with Linear Dynamical Systems}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,7 +18,6 @@ options(digits = 4)
 suppressWarnings(library(ldsr))  # This package
 suppressWarnings(library(data.table)) # The package leverages the efficient `data.table` so we will use it in this vignette.
 suppressWarnings(library(ggplot2)) # Plotting
-suppressWarnings(library(cowplot)) # Plotting multiple panels in a figure
 ```
 
 # Introduction
@@ -47,7 +46,6 @@ We call some necessary packages
 library(ldsr)  # This package
 library(data.table) # The package leverages the efficient `data.table` so we will use it in this vignette.
 library(ggplot2) # Plotting
-library(cowplot) # Plotting multiple panels in a figure
 ```
 
 # Benchmark
@@ -167,7 +165,7 @@ reps <- LDS_rep(lds$theta, u, v, years = lds$rec$year, mu = mean(log(P1annual$Qa
 
 Plot them
 
-```{r, fig.width=5, fig.height=5}
+```{r, fig.width=7, fig.height=7}
 plot_replicates(reps)
 ```
 
