@@ -24,42 +24,42 @@ calculate_metrics <- function(Qa.hat, Qa, z) {
 #' @export
 plot_reconstruction <- function(s, target, period, benchmark = NULL) {
 
+    if (period == 'inst') s <- s[year %in% target$year]
+    p <- ggplot(s) +
+        theme_cowplot() +
+        panel_border('black') +
+        geom_ribbon(aes(year, ymin = Ql, ymax = Qu), alpha = 0.2) +
+        geom_line(aes(year, Q, colour = 'LDS', linetype = 'LDS'), size = 0.4) +
+        labs(x = 'Year', y = 'Annual streamflow, million m\u00B3')
+
     if (period == 'inst') {
-        s <- s[year %in% target$year]
-        p <- ggplot(s) +
-            geom_ribbon(aes(year, ymin = Ql, ymax = Qu), alpha = 0.2) +
-            geom_line(aes(year, Q, colour = 'LDS', linetype = 'LDS'), size = 0.4) +
-            geom_line(aes(year, Qa, colour = 'Instrumental', linetype = 'Instrumental'),
-                      data = target, size = 0.4) +
-            labs(x = 'Year', y = 'Annual streamflow, million m\u00B3') +
-            theme(legend.position = 'top',
-                  legend.title = element_blank()) +
-            panel_border('black')
+        p <- p + geom_line(aes(year, Qa, colour = 'Instrumental', linetype = 'Instrumental'),
+                           data = target, size = 0.4)
 
         if (!is.null(benchmark)) {
             benchmark <- benchmark[year %in% target$year]
-            p <- p + geom_line(aes(year, Q, colour = 'Benchmark', linetype = 'Benchmark'),
-                               data = benchmark) +
-            scale_colour_manual(name = "Model", values = c('black', 'darkorange', 'black')) +
-            scale_linetype_manual(name = "Model", values = c(2, 1, 1))
+            p <- p +
+                geom_line(aes(year, Q, colour = 'Benchmark', linetype = 'Benchmark'),
+                          data = benchmark) +
+                scale_colour_manual(name = "Model", values = c('black', 'darkorange', 'black')) +
+                scale_linetype_manual(name = "Model", values = c(2, 1, 1))
         } else
-            p <- p + scale_colour_manual(values = c('darkorange', 'black'))
-    } else {
-        p <- ggplot(s) +
-            geom_ribbon(aes(year, ymin = Ql, ymax = Qu), alpha = 0.2) +
-            geom_line(aes(year, Q, colour = 'LDS', linetype = 'LDS'), size = 0.4) +
-            labs(x = 'Year', y = 'Annual streamflow, million m\u00B3') +
-            theme(legend.position = 'top',
-                  legend.title = element_blank()) +
-            panel_border('black')
+            p <- p +
+                scale_colour_manual(name = "Model", values = c('darkorange', 'black')) +
+                scale_linetype_manual(name = "Model", values = c(1, 1))
 
+        p <- p + theme(legend.position = 'top',
+                       legend.title = element_blank())
+    } else {# Full period
         if (!is.null(benchmark))
             p <- p + geom_line(aes(year, Q, colour = 'Benchmark', linetype = 'Benchmark'),
                                data = benchmark) +
                 scale_colour_manual(name = "Model", values = c('blue', 'black')) +
-                scale_linetype_manual(name = "Model", values = c(2, 1))
+                scale_linetype_manual(name = "Model", values = c(2, 1)) +
+                theme(legend.position = 'top',
+                      legend.title = element_blank())
         else
-            p <- p + scale_colour_manual(values = 'black')
+            p <- p + theme(legend.position = 'none')
     }
 
     q <- ggplot(s) +
@@ -67,10 +67,11 @@ plot_reconstruction <- function(s, target, period, benchmark = NULL) {
         geom_ribbon(aes(year, ymin = Xl, ymax = Xu), alpha = 0.2) +
         geom_line(aes(year, X), size = 0.4) +
         labs(x = 'Year', y = 'Flow regime state') +
+        theme_cowplot() +
         panel_border('black')
 
     plot_grid(p, q, nrow = 2,
-              rel_heights = c(1, 0.75),
+              rel_heights = {if (p$theme$legend.position == 'none') c(1,1) else c(1, 0.75)},
               labels = c('(a)', '(b)'))
 }
 

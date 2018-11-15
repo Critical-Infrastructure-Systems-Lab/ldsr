@@ -69,8 +69,7 @@ plot_replicates <- function(reps) {
         geom_line(aes(year, Q), data = lds$rec, colour = 'black') +
         labs(x = 'Year',
              y = 'Annual streamflow, million m\u00B3') +
-        theme(text = element_text(size = 10),
-              plot.margin = unit(c(0.1, 0.1, 0.1, 0.6), 'cm')) +
+        theme_cowplot() +
         panel_border('black')
     # Plot catchment state
     q <- ggplot(reps) +
@@ -78,8 +77,7 @@ plot_replicates <- function(reps) {
         geom_line(aes(year, X), data = lds$rec, colour = 'black') +
         labs(x = 'Year',
              y = 'Flow regime') +
-        theme(text = element_text(size = 10),
-              plot.margin = unit(c(0.1, 0.1, 0.1, 0.6), 'cm')) +
+        theme_cowplot() +
         panel_border('black')
 
     plot_grid(p, q, ncol = 1, axis = 'r', align = 'v',
