@@ -57,7 +57,7 @@ First we create a benchmark reconstruction using Principal Component Regression.
 set.seed(123)
 Z <- replicate(100, sample(1:85, 9), simplify = F)
 # Build and cross-validate a PCR model
-bm <- PCR_reconstruction(P1annual, P1pc)
+bm <- PCR_reconstruction(P1annual, P1pc, Z = Z)
 ```
 
 The following principal components were selected by the backward stepwise process
@@ -85,7 +85,7 @@ We are now ready to learn the LDS model.
 
 ## Model learning
 
-Since EM is a local search routine, we run it with multiple restarts, each of which has a different initial condition. For our problem, 1000 restarts is sufficient. Learning takes a couple of minutes on a quad-core 3.4 GHz desktop.
+Since EM is a local search routine, we run it with multiple restarts, each of which has a different initial condition. The following results were obtained with 1000 restart, which takes a couple of minutes on a quad-core 3.4 GHz desktop. You may set `num.restarts = 100` to shorten the computation time.
 
 ```{r, eval=FALSE}
 set.seed(100)
@@ -104,7 +104,7 @@ lds$init
 
 ## Cross-validation
 
-This cross-validation procedure takes several hours on a quad-core 3.4 GHz desktop. The package has built-in parallel computing capability, so run it on on a cluster to reduce running time. Alternatively, you can also reduce the number of restarts.
+This cross-validation procedure takes several hours on a quad-core 3.4 GHz desktop. The package has built-in parallel computing capability, so run it on on a cluster to reduce running time. Alternatively, you can also reduce the number of restarts. In this example, setting `num.restart = 10` will not cause a big loss in performance.
 
 ```{r, eval=FALSE}
 cv <- cvLDS(P1annual, u, v, Z = Z, num.restarts = 1000)
@@ -175,3 +175,8 @@ plot_replicates(reps)
 options(digits = old.opts)
 ```
 
+# References
+
+Nguyen, H. T. T., & Galelli, S. (2018). A linear dynamical systems approach to streamflow reconstruction reveals history of regime shifts in northern Thailand. *Water Resources Research*, **54**, 2057–2077. \url{https://doi.org/10.1002/2017WR022114}
+
+Cook, E.R., Anchukaitis, K.J., Buckley, B.M., D'Arrigo, R.D., Jacoby, G.C., and Wright, W.E. (2010).  Asian monsoon failure and megadrought during the last millennium.  *Science*, **328**, 486-489.
