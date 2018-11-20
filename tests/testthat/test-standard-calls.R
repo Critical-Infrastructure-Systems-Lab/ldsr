@@ -16,6 +16,7 @@ test_that("Randomized restarts works serially", {
 })
 
 test_that("Randomized restarts works in parallel with num.restarts > 10", {
+    skip_on_cran()
     expect_is(LDS_reconstruction(P1annual, u, v, method = 'EM',
                                  num.restarts = 12,
                                  parallel = TRUE),
@@ -37,6 +38,7 @@ test_that("Cross validation works in serial with randomized restarts", {
 })
 
 test_that("Cross validation works in parallel with randomized restarts", {
+    skip_on_cran()
     expect_is(cvLDS(P1annual, u, v, method = 'EM',
                     num.restarts = 2,
                     CV.reps = 2, parallel = TRUE),
