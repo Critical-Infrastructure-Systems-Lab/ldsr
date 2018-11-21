@@ -4,8 +4,8 @@
 #' @docType package
 #' @name ldsr
 #' @import data.table
-#' @import ggplot2
 #' @import cowplot
+#' @rawNamespace import(ggplot2, except = ggsave)
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar%
 #' @importFrom hydroGOF ssq NSE KGE rmse
