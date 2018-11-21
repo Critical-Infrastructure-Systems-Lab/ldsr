@@ -104,7 +104,7 @@ lds$init
 
 ## Cross-validation
 
-This cross-validation procedure takes several hours on a quad-core 3.4 GHz desktop. The package has built-in parallel computing capability, so run it on on a cluster to reduce running time. Alternatively, you can also reduce the number of restarts. In this example, setting `num.restart = 10` will not cause a big loss in performance.
+This cross-validation procedure takes a couple of hours on a quad-core 3.4 GHz desktop. The package has built-in parallel computing capability, so run it on on a cluster to reduce running time. Alternatively, you can also reduce the number of restarts. In this example, setting `num.restart = 10` will not cause a big loss in performance.
 
 ```{r, eval=FALSE}
 cv <- cvLDS(P1annual, u, v, Z = Z, num.restarts = 1000)

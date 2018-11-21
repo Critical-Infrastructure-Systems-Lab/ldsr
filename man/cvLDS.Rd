@@ -5,8 +5,9 @@
 \title{Cross validate LDS model}
 \usage{
 cvLDS(Qa, u, v, method = "EM", k, CV.reps = 100, Z = NULL,
-  init = NULL, num.restarts = 100, lambda = 1, num.islands = 4,
-  pop.size = 250, niter = 1000, tol = 1e-05, parallel = TRUE)
+  init = NULL, num.restarts = 100, lambda = 1, ub, lb,
+  num.islands = 4, pop.per.island = 100, niter = 1000, tol = 1e-05,
+  parallel = TRUE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
@@ -28,6 +29,10 @@ cvLDS(Qa, u, v, method = "EM", k, CV.reps = 100, Z = NULL,
 \item{num.restarts}{if init is not given then num.restarts must be provided. In this case the function
 will randomize the initial value by sampling uniformly within the range for each parameters
 (A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).}
+
+\item{ub}{Upper bounds, a vector whose length is the number of parameters}
+
+\item{lb}{Lower bounds}
 
 \item{niter}{Maximum number of iterations, default 1000}
 

@@ -4,7 +4,7 @@
 \alias{Kalman_smoother}
 \title{Implement Kalman smoothing}
 \usage{
-Kalman_smoother(y, u, v, theta)
+Kalman_smoother(y, u, v, theta, stdlik = TRUE)
 }
 \arguments{
 \item{y}{Observation matrix (may need to be normalized and centered before hand) (q rows, T columns)}
@@ -14,6 +14,8 @@ Kalman_smoother(y, u, v, theta)
 \item{v}{Input matrix for the output equation (m_v rows, T columns)}
 
 \item{theta}{A list of system parameters (A, B, C, D, Q, R)'}
+
+\item{stdlik}{Boolean, whether the likelihood is divided by the number of observations. Standardizing the likelihood this way may speed up convergence in the case of long time series.}
 }
 \value{
 A list of fitted elements (X, Y, V, Cov, and lik)

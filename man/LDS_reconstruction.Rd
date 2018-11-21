@@ -5,8 +5,8 @@
 \title{Learn LDS model with multiple initial conditions}
 \usage{
 LDS_reconstruction(Qa, u, v, method = "EM", init = NULL,
-  num.restarts = 100, return.init = TRUE, lambda = 1,
-  num.islands = 10, pop.size = 250, niter = 1000, tol = 1e-05,
+  num.restarts = 100, return.init = TRUE, lambda = 1, ub, lb,
+  num.islands = 4, pop.per.island = 250, niter = 1000, tol = 1e-05,
   parallel = TRUE)
 }
 \arguments{
@@ -26,6 +26,10 @@ will randomize the initial value by sampling uniformly within the range for each
 
 \item{return.init}{Indicate whether the initial condition that results in the highest
 log-likelihood is returned. Default is TRUE.}
+
+\item{ub}{Upper bounds, a vector whose length is the number of parameters}
+
+\item{lb}{Lower bounds}
 
 \item{niter}{Maximum number of iterations, default 1000}
 

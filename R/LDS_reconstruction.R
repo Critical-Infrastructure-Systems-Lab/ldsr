@@ -136,6 +136,11 @@ cvLDS <- function(Qa, u, v, method = 'EM',
         Z <- lapply(Z2, '+', n.paleo)
     }
 
+    # ub and lb must be passed through to one_Cv, otherwise parallel run will produce an erroo.
+    # TODO: change to ... in argument list. This is a temporary fix. With (...) we can past
+    # different arguments to different calls of one_CV based on context.
+    if (method == 'EM') ub <- lb <- NULL
+
     one_CV <- function(omit, method, y, u, v, init, num.restarts,
                        lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
         y2 <- y
