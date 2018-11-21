@@ -16,7 +16,7 @@ LDS_EM_restart <- function(y, u, v, init,
                            parallel = FALSE) {
 
     if (parallel) {
-        nbCores <- detectCores()
+        nbCores <- detectCores() - 1
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
         models <- foreach(init.val = init) %dopar% LDS_EM(y, u, v, init.val, niter, tol)
