@@ -1,7 +1,7 @@
 Package: ldsr
 Type: Package
 Title: Streamflow Reconstruction using Linear Dynamical Systems
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: c(
     person("Hung", "Nguyen", email = "ntthung@gmail.com", role = c("aut", "cre")),
     person("Stefano", "Galelli", email = "stefano_galelli@sutd.edu.sg", role = "aut")
