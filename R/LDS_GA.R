@@ -28,7 +28,7 @@ vec_to_list <- function(theta.vec, d) {
 penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
 
     theta.list <- vec_to_list(theta.vec, nrow(u))
-    ks.result <- Kalman_smoother(y, u, v, theta.list)
+    ks.result <- Kalman_smoother(y, u, v, theta.list, stdlik = FALSE)
 
     # Calculate sum of squares of measurement update
     A <- theta.list$A
@@ -37,44 +37,88 @@ penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
     X.tp1 <- ks.result$X[1, 2:N]
     X.t <- ks.result$X[1,1:(N-1)]
     ssq <- sum((X.tp1 - A %*% X.t - B %*% u[,1:(N-1)])^2)
-    # Because likelihood is normalized, ssq needs to be normalized as well
-    ks.result$lik - lambda * ssq / sum(is.na(y))
+    # X <- rep(0, N)
+    # for (i in 2:N) X[i] <- A * X[i-1] + B %*% u[,i-1]
+    # ssq <- sum((ks.result$X - X)^2)
+    ks.result$lik - lambda * ssq
 }
 
 #' Learn a linear dynamical system using Genetic Algorithm
+#' @inheritParams LDS_reconstruction
 
-LDS_GA <- function(y, u, v, lambda = 1, num.islands = 4, pop.size = 250, niter = 1000, parallel = TRUE) {
+LDS_GA <- function(y, u, v, lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100, niter = 1000, parallel = TRUE) {
 
-    # Upper and lower bounds
-    lb <- c(0.1,   -1, -1, -1, -1, -1, 0.001, -1,
-            0.001, -1, -1, -1, -1, -1, 0.001, -1,
-            0.001, 0.001, 0.001)
-    ub <- c(0.999, -0.001, -0.001, -0.001, -0.001, -0.001, 1, -0.001,
-            0.999, -0.001, -0.001, -0.001, -0.001, -0.001, 1, -0.001,
-            10, 1, 1)
     # Run genetic algorithm
     d <- nrow(u)
     GA <- GA::gaisl(type = 'real-valued',
              fitness = function(theta) penalized_likelihood(y, u, v, theta, lambda),
              lower = lb,
              upper = ub,
-             popSize = pop.size,
+             popSize = pop.per.island * num.islands,
              numIslands = num.islands,
-             migrationRate = 0,
-             names = c('A', paste0('B', 1:d), 'C', paste0('D', 1:d), 'Q', 'R', 'mu1', 'V1'),
+             # migrationRate = 0.01,
+             names = c('A', paste0('B', 1:d), 'C', paste0('D', 1:d), 'Q', 'R',   'V1'),
              run = 100,
              maxiter = niter,
              monitor = FALSE,
-             optim = TRUE,
+             optim = FALSE, # optim = TRUE gives ugly results
              parallel = parallel)
-    fit <- summary(GA)
-    best <- which.max(fit$fitnessValues)
-    theta.vec <- fit$solution[best,]
+    # fit <- summary(GA)
+    # best <- which.max(fit$fitnessValues)
+    theta.vec <- GA@solution
+
+    # Reconstruction with measurement update
+    theta <- vec_to_list(theta.vec, d)
+    ks.result <- Kalman_smoother(y, u, v, theta) # Return standardized lik so that it's comparable with EM
+    list(theta = theta,
+         fit = ks.result,
+         lik = ks.result$lik,
+         pl = GA@fitnessValue)
+}
+
+#' Learn LDS with L-BFGS-B
+#'
+#' **Warning** This is an experimental feature and may not work.
+#' @inheritParams LDS_GA
+#' @inheritParams LDS_reconstruction
+#' @export
+LDS_BFGS <- function(y, u, v, lambda = 1, ub, lb, num.restarts = 100, parallel = TRUE) {
+
+    d <- nrow(u)
+    # Initial guess for L-BFGS-B
+    par.list <- replicate(num.restarts,
+                          runif(d + d + 5, min = lb, max = ub),
+                          simplify = FALSE)
+    if (parallel) {
+        nbCores <- detectCores() - 1
+        cl <- makeCluster(nbCores)
+        registerDoParallel(cl)
+        optim.result <- foreach(par = par.list) %dopar%
+            optim(par,
+                  function(theta) -penalized_likelihood(y, u, v, theta, lambda),
+                  method = 'L-BFGS-B',
+                  lower = lb,
+                  upper = ub)
+        stopCluster(cl)
+    } else {
+        optim.result <- lapply(par.list, function(par)
+            optim(par,
+                  function(theta) -penalized_likelihood(y, u, v, theta, lambda),
+                  method = 'L-BFGS-B',
+                  lower = lb,
+                  upper = ub))
+    }
+
+    optim.vals <- sapply(optim.result, '[[', 'value')
+    best <- which.max(optim.vals)
+    theta.vec <- optim.result[[best]]$par
 
     # Reconstruction with measurement update
     theta <- vec_to_list(theta.vec, d)
     ks.result <- Kalman_smoother(y, u, v, theta)
     list(theta = theta,
          fit = ks.result,
-         lik = ks.result$lik)
+         lik = ks.result$lik,
+         pl = optim.vals[best])
+
 }

@@ -29,6 +29,8 @@ make_init <- function(init, d, num.restarts) {
 #' @param num.restarts if init is not given then num.restarts must be provided. In this case the function
 #' will randomize the initial value by sampling uniformly within the range for each parameters
 #' (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
+#' @param ub Upper bounds, a vector whose length is the number of parameters
+#' @param lb Lower bounds
 #' @return A list of the following elements
 #' * rec: reconstruction results, a data.table with the following columns
 #'     - year: calculated from Qa and the length of u
@@ -42,7 +44,7 @@ make_init <- function(init, d, num.restarts) {
 #' @export
 LDS_reconstruction <- function(Qa, u, v, method = 'EM',
                                init = NULL, num.restarts = 100, return.init = TRUE,
-                               lambda = 1, num.islands = 10, pop.size = 250,
+                               lambda = 1, ub, lb, num.islands = 4, pop.per.island = 250,
                                niter = 1000, tol = 1e-5,
                                parallel = TRUE) {
 
@@ -64,10 +66,12 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
             }
         },
         GA = {
-            LDS_GA(y, u, v, lambda, num.islands, pop.size, niter, parallel)
+            if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
+            LDS_GA(y, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel)
         },
         BFGS = {
-            stop("BFGS has not been implemented. Please choose either EM or GA for now.")
+            if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
+            LDS_BFGS(y, u, v, lambda, ub, lb, num.restarts, parallel)
         },
         {
             stop("Method undefined. It has to be either EM, GA or BFGS.")
@@ -95,6 +99,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
 
         ans <- list(rec = rec, theta = theta, lik = lik)
         if (return.init) ans$init <- results$init
+        if (method != 'EM') ans$pl <- results$pl
         ans
     })
 }
@@ -112,7 +117,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
 cvLDS <- function(Qa, u, v, method = 'EM',
                   k, CV.reps = 100, Z = NULL,
                   init = NULL, num.restarts = 100,
-                  lambda = 1, num.islands = 4, pop.size = 250,
+                  lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
                   niter = 1000, tol = 1e-5, parallel = TRUE) {
 
     mu <- mean(log(Qa$Qa), na.rm = TRUE)
@@ -131,7 +136,8 @@ cvLDS <- function(Qa, u, v, method = 'EM',
         Z <- lapply(Z2, '+', n.paleo)
     }
 
-    one_CV <- function(omit, method, y, u, v, init, num.restarts, lambda, num.islands, pop.size, niter, tol) {
+    one_CV <- function(omit, method, y, u, v, init, num.restarts,
+                       lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
         y2 <- y
         y2[omit] <- NA
         # Parallel is run at the outer loop, i.e. for each cross-validation run
@@ -141,7 +147,8 @@ cvLDS <- function(Qa, u, v, method = 'EM',
                 LDS_EM_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
             },
             GA = {
-                LDS_GA(y2, u, v, lambda, num.islands, pop.size, niter, parallel = FALSE)
+                if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
+                LDS_GA(y2, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel = FALSE)
             },
             BFGS = {
                 stop("BFGS has not been implemented. Please choose either EM or GA for now.")
@@ -157,11 +164,11 @@ cvLDS <- function(Qa, u, v, method = 'EM',
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
         cv.results <- foreach(omit = Z) %dopar%
-            one_CV(omit, method, y, u, v, init, num.restarts, lambda, num.islands, pop.size, niter, tol)
+            one_CV(omit, method, y, u, v, init, num.restarts, lambda, ub, lb, num.islands, pop.per.island, niter, tol)
         stopCluster(cl)
     } else {
         cv.results <- lapply(Z, function(omit)
-            one_CV(omit, method, y, u, v, init, num.restarts, lambda, num.islands, pop.size, niter, tol))
+            one_CV(omit, method, y, u, v, init, num.restarts, lambda, ub, lb, num.islands, pop.per.island, niter, tol))
     }
 
     fit <- lapply(cv.results, '[[', 'fit')

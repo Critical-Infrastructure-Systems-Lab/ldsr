@@ -9,10 +9,11 @@
 #' @param u Input matrix for the state equation (m_u rows, T columns)
 #' @param v Input matrix for the output equation (m_v rows, T columns)
 #' @param theta A list of system parameters (A, B, C, D, Q, R)'
+#' @param stdlik Boolean, whether the likelihood is divided by the number of observations. Standardizing the likelihood this way may speed up convergence in the case of long time series.
 #' @return A list of fitted elements (X, Y, V, Cov, and lik)
 #' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
-Kalman_smoother <- function(y, u, v, theta) {
-    .Call(`_ldsr_Kalman_smoother`, y, u, v, theta)
+Kalman_smoother <- function(y, u, v, theta, stdlik = TRUE) {
+    .Call(`_ldsr_Kalman_smoother`, y, u, v, theta, stdlik)
 }
 
 #' Maximizing expected likelihood using analytical solution

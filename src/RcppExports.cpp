@@ -7,8 +7,8 @@
 using namespace Rcpp;
 
 // Kalman_smoother
-List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta);
-RcppExport SEXP _ldsr_Kalman_smoother(SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP thetaSEXP) {
+List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool stdlik);
+RcppExport SEXP _ldsr_Kalman_smoother(SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP thetaSEXP, SEXP stdlikSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -16,7 +16,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type v(vSEXP);
     Rcpp::traits::input_parameter< List >::type theta(thetaSEXP);
-    rcpp_result_gen = Rcpp::wrap(Kalman_smoother(y, u, v, theta));
+    Rcpp::traits::input_parameter< bool >::type stdlik(stdlikSEXP);
+    rcpp_result_gen = Rcpp::wrap(Kalman_smoother(y, u, v, theta, stdlik));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -52,7 +53,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_ldsr_Kalman_smoother", (DL_FUNC) &_ldsr_Kalman_smoother, 4},
+    {"_ldsr_Kalman_smoother", (DL_FUNC) &_ldsr_Kalman_smoother, 5},
     {"_ldsr_Mstep", (DL_FUNC) &_ldsr_Mstep, 4},
     {"_ldsr_LDS_EM", (DL_FUNC) &_ldsr_LDS_EM, 6},
     {NULL, NULL, 0}

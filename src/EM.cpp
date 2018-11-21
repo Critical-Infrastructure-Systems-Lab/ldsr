@@ -15,10 +15,11 @@ using namespace arma;
 //' @param u Input matrix for the state equation (m_u rows, T columns)
 //' @param v Input matrix for the output equation (m_v rows, T columns)
 //' @param theta A list of system parameters (A, B, C, D, Q, R)'
+//' @param stdlik Boolean, whether the likelihood is divided by the number of observations. Standardizing the likelihood this way may speed up convergence in the case of long time series.
 //' @return A list of fitted elements (X, Y, V, Cov, and lik)
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 // [[Rcpp::export]]
-List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta) {
+List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool stdlik = true) {
 
     // Model parameters
     mat A = theta["A"];
@@ -104,7 +105,8 @@ List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta) {
     }
 
     double lik = -0.5*n_obs*log(2*pi) - 0.5*accu(delta / Sigma % delta + log(Sigma));
-    lik = lik / n_obs;
+
+    if (stdlik) lik = lik / n_obs;
 
     return List::create(Named("X") = Xs,
                         Named("Y") = Ys,
