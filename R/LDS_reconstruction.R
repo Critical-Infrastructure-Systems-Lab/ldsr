@@ -165,7 +165,7 @@ cvLDS <- function(Qa, u, v, method = 'EM',
     }
 
     if (parallel)  {
-        nbCores <- detectCores()
+        nbCores <- detectCores() - 1
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
         cv.results <- foreach(omit = Z) %dopar%
@@ -191,7 +191,8 @@ cvLDS <- function(Qa, u, v, method = 'EM',
     metrics.dist <- rbindlist(lapply(1:CV.reps,
                                      function(i) calculate_metrics(Q[[i]], Qa$Qa, Z2[[i]])))
 
-    return(list(metrics.dist = metrics.dist,
+    return(list(metrics = colMeans(metrics.dist),
+                metrics.dist = metrics.dist,
                 cvQ = cvQ,
-                Z2 = Z2))
+                Z = Z2))
 }
