@@ -17,7 +17,6 @@ Imports:
     data.table,
     doParallel,
     foreach,
-    GA,
     ggplot2,
     hydroGOF,
     magrittr,
@@ -33,7 +32,8 @@ LinkingTo:
 URL: https://github.com/ntthung/ldsr
 BugReports: https://github.com/ntthung/ldsr/issues
 Suggests: 
-    testthat,
+    GA,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat
 VignetteBuilder: knitr
