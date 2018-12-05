@@ -19,9 +19,11 @@ Imports:
     foreach,
     ggplot2,
     hydroGOF,
+    knitr,
     magrittr,
     parallel,
     Rcpp,
+    rmarkdown,
     stats
 RoxygenNote: 6.1.1
 Roxygen:
@@ -33,7 +35,5 @@ URL: https://github.com/ntthung/ldsr
 BugReports: https://github.com/ntthung/ldsr/issues
 Suggests: 
     GA,
-    knitr,
-    rmarkdown,
     testthat
 VignetteBuilder: knitr
