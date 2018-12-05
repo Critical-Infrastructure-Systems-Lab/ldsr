@@ -4,10 +4,10 @@
 \alias{LDS_reconstruction}
 \title{Learn LDS model with multiple initial conditions}
 \usage{
-LDS_reconstruction(Qa, u, v, method = "EM", init = NULL,
-  num.restarts = 100, return.init = TRUE, lambda = 1, ub, lb,
-  num.islands = 4, pop.per.island = 250, niter = 1000, tol = 1e-05,
-  parallel = TRUE)
+LDS_reconstruction(Qa, u, v, method = "EM", trans = "log",
+  init = NULL, num.restarts = 100, return.init = TRUE, lambda = 1,
+  ub, lb, num.islands = 4, pop.per.island = 250, niter = 1000,
+  tol = 1e-05, parallel = TRUE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
@@ -17,6 +17,8 @@ LDS_reconstruction(Qa, u, v, method = "EM", init = NULL,
 \item{v}{Input matrix for the output equation (m_v rows, T columns)}
 
 \item{method}{Either EM or GA (note: GA is experimental)}
+
+\item{trans}{Transformatin of flow before model fitting, can be either "log", "boxcox" or "none".}
 
 \item{init}{A list of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.}
 
