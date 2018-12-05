@@ -26,6 +26,7 @@ make_init <- function(init, d, num.restarts) {
 #' @param Qa Observations: a data.table of annual streamflow with at least two columns: year and Qa.
 #' @inheritParams LDS_EM_restart
 #' @param method Either EM or GA (note: GA is experimental)
+#' @param trans Transformatin of flow before model fitting, can be either "log", "boxcox" or "none".
 #' @param num.restarts if init is not given then num.restarts must be provided. In this case the function
 #' will randomize the initial value by sampling uniformly within the range for each parameters
 #' (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
@@ -42,16 +43,25 @@ make_init <- function(init, d, num.restarts) {
 #' * lik: maximum likelihood
 #' * init: the initial condition that resulted in the maximum likelihood (if )
 #' @export
-LDS_reconstruction <- function(Qa, u, v, method = 'EM',
+LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
                                init = NULL, num.restarts = 100, return.init = TRUE,
                                lambda = 1, ub, lb, num.islands = 4, pop.per.island = 250,
                                niter = 1000, tol = 1e-5,
                                parallel = TRUE) {
 
     # Attach NA and make the y matrix
-    mu <- mean(log(Qa$Qa), na.rm = TRUE)
+    if (trans == 'log')
+        Q.trans <- log(Qa$Qa)
+    else if (trans == 'boxcox') {
+        lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam %>% 'names<-'('lambda')
+        Q.trans <- car::bcPower(Qa$Qa, lambda)
+    } else if (trans == 'none')
+        Q.trans <- Qa$Qa
+    else stop('Accepted transformations are "log", "boxcox" and "none"')
+
+    mu <- mean(Q.trans, na.rm = TRUE)
     n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
-    y <- t(c(rep(NA, n.paleo), log(Qa$Qa) - mu))
+    y <- t(c(rep(NA, n.paleo), Q.trans - mu))
 
     results <- switch(method,
         EM = {
@@ -91,15 +101,35 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
         Yl <- Y - CI.Y # Lower range for Y
         Yu <- Y + CI.Y # Upper range for Y
         # Transform Y to Q and put in a data.table
-        rec <- data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
-                          X, Xl, Xu,
-                          Q = exp(Y),
-                          Ql = exp(Yl),
-                          Qu = exp(Yu))
+        rec <- switch(trans,
+            log = data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                             X, Xl, Xu,
+                             Q = exp(Y),
+                             Ql = exp(Yl),
+                             Qu = exp(Yu)),
+            boxcox = if (lambda == 0)
+                data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                           X, Xl, Xu,
+                           Q = exp(Y),
+                           Ql = exp(Yl),
+                           Qu = exp(Yu))
+            else
+                data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                           X, Xl, Xu,
+                           Q = (Y*lambda + 1)^(1/lambda),
+                           Ql = (Yl*lambda + 1)^(1/lambda),
+                           Qu = (Yu*lambda + 1)^(1/lambda)),
+            data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                       X, Xl, Xu,
+                       Q = Y,
+                       Ql = Yl,
+                       Qu = Yu)
+            )
 
         ans <- list(rec = rec, theta = theta, lik = lik)
         if (return.init) ans$init <- results$init
         if (method != 'EM') ans$pl <- results$pl
+        if (trans == 'boxcox') ans$lambda <- lambda
         ans
     })
 }
@@ -110,19 +140,29 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM',
 #' @param k Numer of data points to be left out in each cross validation-run.
 #' @param CV.reps Number of cross-validation runs.
 #' @param Z A list of CV.reps elements, each is a vector of length k.See Details.
+#' @param metrics.space Whether performance metrics are calculated in the 'original' or 'transformed' space, or 'both'.
 #' @details Allows different experimental setups:
 #'   * init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts.
 #'   * Z: If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created.
 #' @export
-cvLDS <- function(Qa, u, v, method = 'EM',
-                  k, CV.reps = 100, Z = NULL,
+cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
+                  k, CV.reps = 100, Z = NULL, metrics.space = 'original',
                   init = NULL, num.restarts = 100,
                   lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
                   niter = 1000, tol = 1e-5, parallel = TRUE) {
 
-    mu <- mean(log(Qa$Qa), na.rm = TRUE)
     n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
-    y <- t(c(rep(NA, n.paleo), log(Qa$Qa) - mu))
+    if (trans == 'log')
+        Q.trans <- log(Qa$Qa)
+    else if (trans == 'boxcox') {
+        lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam %>% 'names<-'('lambda')
+        Q.trans <- car::bcPower(Qa$Qa, lambda)
+    } else if (trans == 'none')
+        Q.trans <- Qa$Qa
+    else stop('Accepted transformations are "log", "boxcox" and "none"')
+
+    mu <- mean(Q.trans, na.rm = TRUE)
+    y <- t(c(rep(NA, n.paleo), Q.trans - mu))
 
     obs.ind <- which(!is.na(y))
     n.obs <- length(obs.ind)
@@ -156,7 +196,8 @@ cvLDS <- function(Qa, u, v, method = 'EM',
                 LDS_GA(y2, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel = FALSE)
             },
             BFGS = {
-                stop("BFGS has not been implemented. Please choose either EM or GA for now.")
+                if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
+                LDS_BFGS(y, u, v, lambda, ub, lb, num.restarts, parallel)
             },
             {
                 stop("Method undefined. It has to be either EM, GA or BFGS.")
@@ -169,18 +210,26 @@ cvLDS <- function(Qa, u, v, method = 'EM',
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
         cv.results <- foreach(omit = Z) %dopar%
-            one_CV(omit, method, y, u, v, init, num.restarts, lambda, ub, lb, num.islands, pop.per.island, niter, tol)
+            one_CV(omit, method, y, u, v, init, num.restarts,
+                   lambda, ub, lb, num.islands, pop.per.island, niter, tol)
         stopCluster(cl)
     } else {
         cv.results <- lapply(Z, function(omit)
-            one_CV(omit, method, y, u, v, init, num.restarts, lambda, ub, lb, num.islands, pop.per.island, niter, tol))
+            one_CV(omit, method, y, u, v, init, num.restarts,
+                   lambda, ub, lb, num.islands, pop.per.island, niter, tol))
     }
 
     fit <- lapply(cv.results, '[[', 'fit')
-    Y <- lapply(fit, '[[', 'Y') %>% lapply(function(v) as.vector(v)[obs.ind])
-    Q <- lapply(Y, function(v) exp(v + mu))
-    all.Q <- rbindlist(lapply(1:CV.reps, function(i)
-        data.table(rep = i, year = Qa$year, Q = Q[[i]])))
+    Y <- lapply(fit, '[[', 'Y') %>% lapply(function(v) as.vector(v + mu)[obs.ind])
+    Q <- switch(trans,
+        log = lapply(Y, function(v) exp(v)),
+        boxcox =
+            if (lambda == 0) lapply(Y, function(v) exp(v))
+            else lapply(Y, function(v)  (v * lambda + 1)^(1/lambda)),
+        Y)
+
+    # all.Q <- rbindlist(lapply(1:CV.reps, function(i)
+    #     data.table(rep = i, year = Qa$year, Q = Q[[i]])))
     cvQ <- rbindlist(lapply(1:CV.reps, function(i) {
         ind <- Z2[[i]]
         data.table(rep = i,
@@ -188,10 +237,27 @@ cvLDS <- function(Qa, u, v, method = 'EM',
                    cvQ = Q[[i]][ind],
                    cvObs = Qa$Qa[ind])
     }))
-    metrics.dist <- rbindlist(lapply(1:CV.reps,
-                                     function(i) calculate_metrics(Q[[i]], Qa$Qa, Z2[[i]])))
-
-    return(list(metrics = colMeans(metrics.dist),
+    metrics.dist <- switch(metrics.space,
+       original = {rbindlist(lapply(1:CV.reps,
+                                   function(i) calculate_metrics(Q[[i]], Qa$Qa, Z2[[i]]))) %>%
+           .[, space := 'original']},
+       trans = {rbindlist(lapply(1:CV.reps,
+                                function(i) calculate_metrics(Y[[i]], Q.trans, Z2[[i]]))) %>%
+           .[, space := 'transformed']},
+       both = {rbind(
+           rbindlist(lapply(1:CV.reps,
+                            function(i) calculate_metrics(Q[[i]], Qa$Qa, Z2[[i]]))) %>%
+               .[, space := 'original'],
+           rbindlist(lapply(1:CV.reps,
+                            function(i) calculate_metrics(Y[[i]], Q.trans, Z2[[i]]))) %>%
+               .[, space := 'transformed']
+       )},
+       {stop('Metrics space undefined. Must be "original", "transformed", or "both"')}
+    )
+    return(list(metrics = {
+                    if (metrics.space != 'both') colMeans(metrics.dist[, 1:5])
+                    else metrics.dist[, lapply(.SD, mean), by = space]
+                },
                 metrics.dist = metrics.dist,
                 cvQ = cvQ,
                 Z = Z2))
