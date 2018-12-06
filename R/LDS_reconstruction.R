@@ -152,6 +152,7 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
                   niter = 1000, tol = 1e-5, parallel = TRUE) {
 
     n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
+    inst.period <- (n.paleo + 1):ncol(u)
     if (trans == 'log')
         Q.trans <- log(Qa$Qa)
     else if (trans == 'boxcox') {
@@ -161,20 +162,19 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
         Q.trans <- Qa$Qa
     else stop('Accepted transformations are "log", "boxcox" and "none"')
 
+    if (!(metrics.space) %in% c('original', 'transformed', 'both'))
+        stop('Metrics space undefined. Must be "original", "transformed", or "both"')
+
     mu <- mean(Q.trans, na.rm = TRUE)
     y <- t(c(rep(NA, n.paleo), Q.trans - mu))
 
-    obs.ind <- which(!is.na(y))
+    obs.ind <- which(!is.na(Qa$Qa))
     n.obs <- length(obs.ind)
 
     if (missing(k)) k <- ceiling(n.obs / 10)
-    if (is.null(Z)) {
-        Z <- replicate(CV.reps, sample(obs.ind, k), simplify = F)
-        Z2 <- lapply(Z, '-', n.paleo)
-    } else {
-        Z2 <- Z
-        Z <- lapply(Z2, '+', n.paleo)
-    }
+
+    # Z: index in instrumental period
+    if (is.null(Z)) Z <- replicate(CV.reps, sample(obs.ind, k), simplify = F)
 
     # ub and lb must be passed through to one_Cv, otherwise parallel run will produce an erroo.
     # TODO: change to ... in argument list. This is a temporary fix. With (...) we can past
@@ -183,10 +183,11 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
 
     one_CV <- function(omit, method, y, u, v, init, num.restarts,
                        lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
+
         y2 <- y
-        y2[omit] <- NA
+        y2[omit + n.paleo] <- NA
         # Parallel is run at the outer loop, i.e. for each cross-validation run
-        switch(method,
+        ans <- switch(method,
             EM = {
                 init <- make_init(init, nrow(u), num.restarts)
                 LDS_EM_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
@@ -199,10 +200,21 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
                 if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
                 LDS_BFGS(y, u, v, lambda, ub, lb, num.restarts, parallel)
             },
-            {
-                stop("Method undefined. It has to be either EM, GA or BFGS.")
-            }
+            stop("Method undefined. It has to be either EM, GA or BFGS.")
         )
+        Y <- as.vector(ans$fit$Y + mu)[inst.period]
+        Qa.hat <- switch(trans,
+                         log = exp(Y),
+                         boxcox = if (lambda == 0) exp(Y) else (Y*lambda + 1)^(1/lambda),
+                         Y)
+        metric <- switch(metrics.space,
+                         original = calculate_metrics(Qa.hat, Qa$Qa, omit) %>% .[, space := 'original'],
+                         trans = calculate_metrics(Y, Q.trans, omit) %>% .[, space := 'transformed'],
+                         both = rbind(
+                             calculate_metrics(Qa.hat, Qa$Qa, omit) %>% .[, space := 'original'],
+                             calculate_metrics(Y, Q.trans, omit) %>% .[, space := 'transformed']
+                         ))
+        list(metric = metric, Ycv = Qa.hat)
     }
 
     if (parallel)  {
@@ -219,46 +231,16 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
                    lambda, ub, lb, num.islands, pop.per.island, niter, tol))
     }
 
-    fit <- lapply(cv.results, '[[', 'fit')
-    Y <- lapply(fit, '[[', 'Y') %>% lapply(function(v) as.vector(v + mu)[obs.ind])
-    Q <- switch(trans,
-        log = lapply(Y, function(v) exp(v)),
-        boxcox =
-            if (lambda == 0) lapply(Y, function(v) exp(v))
-            else lapply(Y, function(v)  (v * lambda + 1)^(1/lambda)),
-        Y)
+    metrics.dist <- rbindlist(lapply(cv.results, '[[', 'metric'))
+    Ycv <- as.data.table(sapply(cv.results, '[[', 'Ycv'))
+    Ycv$year <- Qa$year
+    Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
 
-    # all.Q <- rbindlist(lapply(1:CV.reps, function(i)
-    #     data.table(rep = i, year = Qa$year, Q = Q[[i]])))
-    cvQ <- rbindlist(lapply(1:CV.reps, function(i) {
-        ind <- Z2[[i]]
-        data.table(rep = i,
-                   year = ind + Qa$year[1] - 1,
-                   cvQ = Q[[i]][ind],
-                   cvObs = Qa$Qa[ind])
-    }))
-    metrics.dist <- switch(metrics.space,
-       original = {rbindlist(lapply(1:CV.reps,
-                                   function(i) calculate_metrics(Q[[i]], Qa$Qa, Z2[[i]]))) %>%
-           .[, space := 'original']},
-       trans = {rbindlist(lapply(1:CV.reps,
-                                function(i) calculate_metrics(Y[[i]], Q.trans, Z2[[i]]))) %>%
-           .[, space := 'transformed']},
-       both = {rbind(
-           rbindlist(lapply(1:CV.reps,
-                            function(i) calculate_metrics(Q[[i]], Qa$Qa, Z2[[i]]))) %>%
-               .[, space := 'original'],
-           rbindlist(lapply(1:CV.reps,
-                            function(i) calculate_metrics(Y[[i]], Q.trans, Z2[[i]]))) %>%
-               .[, space := 'transformed']
-       )},
-       {stop('Metrics space undefined. Must be "original", "transformed", or "both"')}
-    )
     return(list(metrics = {
                     if (metrics.space != 'both') colMeans(metrics.dist[, 1:5])
                     else metrics.dist[, lapply(.SD, mean), by = space]
                 },
                 metrics.dist = metrics.dist,
-                cvQ = cvQ,
-                Z = Z2))
+                Ycv = Ycv,
+                Z = Z))
 }
