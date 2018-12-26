@@ -13,7 +13,7 @@ make_init <- function(init, d, num.restarts) {
                   runif(1 + d + 1 + d,
                         min = c(0, rep(-1, d), 0, rep(-1, d)),
                         max = c(1, rep( 1, d), 1, rep( 1, d))),
-                        simplify = F)
+                  simplify = F)
     } else {
         # learnLDS expects init is a list
         if (!is.list(init)) list(init) else init
@@ -32,6 +32,7 @@ make_init <- function(init, d, num.restarts) {
 #' (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
 #' @param ub Upper bounds, a vector whose length is the number of parameters
 #' @param lb Lower bounds
+#' @param return.raw If TRUE,
 #' @return A list of the following elements
 #' * rec: reconstruction results, a data.table with the following columns
 #'     - year: calculated from Qa and the length of u
@@ -46,7 +47,7 @@ make_init <- function(init, d, num.restarts) {
 LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
                                init = NULL, num.restarts = 100, return.init = TRUE,
                                lambda = 1, ub, lb, num.islands = 4, pop.per.island = 250,
-                               niter = 1000, tol = 1e-5,
+                               niter = 1000, tol = 1e-5, return.raw = FALSE,
                                parallel = TRUE) {
 
     # Attach NA and make the y matrix
@@ -60,32 +61,33 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
     else stop('Accepted transformations are "log", "boxcox" and "none"')
 
     mu <- mean(Q.trans, na.rm = TRUE)
-    n.paleo <- ncol(u) - nrow(Qa) # Number of years in the paleo period
+    N <- ncol(u)
+    n.paleo <- N - nrow(Qa) # Number of years in the paleo period
     y <- t(c(rep(NA, n.paleo), Q.trans - mu))
 
     results <- switch(method,
-        EM = {
-            init <- make_init(init, nrow(u), num.restarts)
-            # To avoid unnecessary overhead, only run in parallel mode if the init list is long enough
-            if (parallel && length(init) > 10) {
-                LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE)
-            } else {
-                if (parallel)
-                    warning('Initial condition list is short, LDS_EM_restart() is run in sequential mode.')
-                LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
-            }
-        },
-        GA = {
-            if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
-            LDS_GA(y, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel)
-        },
-        BFGS = {
-            if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
-            LDS_BFGS(y, u, v, lambda, ub, lb, num.restarts, parallel)
-        },
-        {
-            stop("Method undefined. It has to be either EM, GA or BFGS.")
-        }
+                      EM = {
+                          init <- make_init(init, nrow(u), num.restarts)
+                          # To avoid unnecessary overhead, only run in parallel mode if the init list is long enough
+                          if (parallel && length(init) > 10) {
+                              LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE)
+                          } else {
+                              if (parallel)
+                                  warning('Initial condition list is short, LDS_EM_restart() is run in sequential mode.')
+                              LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
+                          }
+                      },
+                      GA = {
+                          if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
+                          LDS_GA(y, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel)
+                      },
+                      BFGS = {
+                          if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
+                          LDS_BFGS(y, u, v, lambda, ub, lb, num.restarts, parallel)
+                      },
+                      {
+                          stop("Method undefined. It has to be either EM, GA or BFGS.")
+                      }
     )
 
     # Construct 95% confidence intervals and return
@@ -102,31 +104,77 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
         Yu <- Y + CI.Y # Upper range for Y
         # Transform Y to Q and put in a data.table
         rec <- switch(trans,
-            log = data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
-                             X, Xl, Xu,
-                             Q = exp(Y),
-                             Ql = exp(Yl),
-                             Qu = exp(Yu)),
-            boxcox = if (lambda == 0)
-                data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
-                           X, Xl, Xu,
-                           Q = exp(Y),
-                           Ql = exp(Yl),
-                           Qu = exp(Yu))
-            else
-                data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
-                           X, Xl, Xu,
-                           Q = (Y*lambda + 1)^(1/lambda),
-                           Ql = (Yl*lambda + 1)^(1/lambda),
-                           Qu = (Yu*lambda + 1)^(1/lambda)),
-            data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
-                       X, Xl, Xu,
-                       Q = Y,
-                       Ql = Yl,
-                       Qu = Yu)
-            )
+                      log = data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                                       X, Xl, Xu,
+                                       Q = exp(Y),
+                                       Ql = exp(Yl),
+                                       Qu = exp(Yu)),
+                      boxcox = if (lambda == 0)
+                          data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                                     X, Xl, Xu,
+                                     Q = exp(Y),
+                                     Ql = exp(Yl),
+                                     Qu = exp(Yu))
+                      else
+                          data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                                     X, Xl, Xu,
+                                     Q = (Y*lambda + 1)^(1/lambda),
+                                     Ql = (Yl*lambda + 1)^(1/lambda),
+                                     Qu = (Yu*lambda + 1)^(1/lambda)),
+                      data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                                 X, Xl, Xu,
+                                 Q = Y,
+                                 Ql = Yl,
+                                 Qu = Yu)
+        )
 
         ans <- list(rec = rec, theta = theta, lik = lik)
+
+        # Return time series without measurement updates.
+        # Note that we are unable to estimate confidence interval in this case
+        if (return.raw) {
+            X2 <- rep(0, N)
+            V2 <- rep(0, N)
+            V2[1] <- V[1]
+            for (t in 2:N) {
+                X2[t] <- theta$A %*% X2[t - 1] + theta$B %*% u[, t - 1]
+                V2[t] <- theta$A*V2[t]*theta$A + theta$Q
+            }
+            CI.X2 <- 1.96*sqrt(V2)
+            Xl2 <- X2 - CI.X2 # Lower range for X
+            Xu2 <- X2 + CI.X2 # Upper range for X
+            Y2 <- as.vector(theta$C) * X2 + as.vector(theta$D %*% u) + mu
+            CI.Y2 <- 1.96 * (as.vector(theta$C) * V2 * as.vector(theta$C) + as.vector(theta$R))
+            Yl2 <- Y2 - CI.Y2 # Lower range for Y
+            Yu2 <- Y2 + CI.Y2 # Upper range for Y
+            # Transform Y to Q and put in a data.table
+            rec2 <- switch(trans,
+                           log = data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                                            X = X2, Xl = Xl2, Xu = Xu2,
+                                            Q = exp(Y2),
+                                            Ql = exp(Yl2),
+                                            Qu = exp(Yu2)),
+                           boxcox = if (lambda == 0)
+                               data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                                          X = X2, Xl = Xl2, Xu = Xu2,
+                                          Q = exp(Y2),
+                                          Ql = exp(Yl2),
+                                          Qu = exp(Yu2))
+                           else
+                               data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                                          X = X2, Xl = Xl2, Xu = Xu2,
+                                          Q = (Y2*lambda + 1)^(1/lambda),
+                                          Ql = (Yl2*lambda + 1)^(1/lambda),
+                                          Qu = (Yu2*lambda + 1)^(1/lambda)),
+                           data.table(year = (Qa[1, year] - n.paleo):(Qa[.N, year]),
+                                      X = X2, Xl = Xl2, Xu = Xu2,
+                                      Q = Y2,
+                                      Ql = Yl2,
+                                      Qu = Yu2)
+            )
+            ans$rec2 <- rec2
+        }
+
         if (return.init) ans$init <- results$init
         if (method != 'EM') ans$pl <- results$pl
         if (trans == 'boxcox') ans$lambda <- lambda
@@ -188,19 +236,19 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
         y2[omit + n.paleo] <- NA
         # Parallel is run at the outer loop, i.e. for each cross-validation run
         ans <- switch(method,
-            EM = {
-                init <- make_init(init, nrow(u), num.restarts)
-                LDS_EM_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
-            },
-            GA = {
-                if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
-                LDS_GA(y2, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel = FALSE)
-            },
-            BFGS = {
-                if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
-                LDS_BFGS(y, u, v, lambda, ub, lb, num.restarts, parallel)
-            },
-            stop("Method undefined. It has to be either EM, GA or BFGS.")
+                      EM = {
+                          init <- make_init(init, nrow(u), num.restarts)
+                          LDS_EM_restart(y2, u, v, init, niter, tol, return.init = FALSE, parallel = FALSE)
+                      },
+                      GA = {
+                          if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
+                          LDS_GA(y2, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel = FALSE)
+                      },
+                      BFGS = {
+                          if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
+                          LDS_BFGS(y, u, v, lambda, ub, lb, num.restarts, parallel)
+                      },
+                      stop("Method undefined. It has to be either EM, GA or BFGS.")
         )
         Y <- as.vector(ans$fit$Y + mu)[inst.period]
         Qa.hat <- switch(trans,
@@ -237,10 +285,10 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
     Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
 
     return(list(metrics = {
-                    if (metrics.space != 'both') colMeans(metrics.dist[, 1:5])
-                    else metrics.dist[, lapply(.SD, mean), by = space]
-                },
-                metrics.dist = metrics.dist,
-                Ycv = Ycv,
-                Z = Z))
+        if (metrics.space != 'both') colMeans(metrics.dist[, 1:5])
+        else metrics.dist[, lapply(.SD, mean), by = space]
+    },
+    metrics.dist = metrics.dist,
+    Ycv = Ycv,
+    Z = Z))
 }

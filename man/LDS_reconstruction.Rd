@@ -7,7 +7,7 @@
 LDS_reconstruction(Qa, u, v, method = "EM", trans = "log",
   init = NULL, num.restarts = 100, return.init = TRUE, lambda = 1,
   ub, lb, num.islands = 4, pop.per.island = 250, niter = 1000,
-  tol = 1e-05, parallel = TRUE)
+  tol = 1e-05, return.raw = FALSE, parallel = TRUE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
@@ -36,6 +36,8 @@ log-likelihood is returned. Default is TRUE.}
 \item{niter}{Maximum number of iterations, default 1000}
 
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.}
+
+\item{return.raw}{If TRUE,}
 
 \item{parallel}{If TRUE, the computation is done in parallel using all available cores
 (using the doParallel backend). If FALSE, the computation is done serially.}
