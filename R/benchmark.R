@@ -73,6 +73,7 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
 
     return(list(
         rec = rec,
+        coeffs = fit$coefficients,
         sigma = summary(fit)$sigma,
         selected = selected,
         metrics.dist = metrics.dist,
