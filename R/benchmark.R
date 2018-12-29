@@ -46,7 +46,7 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
     if (length(selected) == 0) {
         warning("Backward stepwise returned empty model; use all variables instead.")
         fit <- lm(log(Qa) ~ . , data = df)
-        selected <- colnames(df)
+        selected <- names(fit$model)[-1]   # First element is intercept
     }
     rec <- data.table(exp(predict(fit, newdata = pc, interval = 'confidence')))
     colnames(rec) <- c('Q', 'Ql', 'Qu')
