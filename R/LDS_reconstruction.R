@@ -138,11 +138,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
             V2[1] <- V[1]
             for (t in 2:N) {
                 X2[t] <- theta$A %*% X2[t - 1] + theta$B %*% u[, t - 1]
-<<<<<<< HEAD
                 V2[t] <- theta$A*V2[t]*theta$A + theta$Q
-=======
-                V2[t] <- A*V2[t]*A + theta$Q
->>>>>>> 7c2e04ade31c632ee30e0daf99bffdac4576dc46
             }
             CI.X2 <- 1.96*sqrt(V2)
             Xl2 <- X2 - CI.X2 # Lower range for X
