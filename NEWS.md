@@ -1,5 +1,9 @@
 # Change log
 
+**Version 0.0.0.9003**
+
+* Added ensemble model function
+
 **Version 0.0.0.9002**
 
 * Added utility function `water_to_calendar_year()`.
