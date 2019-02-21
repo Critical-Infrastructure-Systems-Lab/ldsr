@@ -2,6 +2,7 @@
 
 export(LDS_BFGS)
 export(LDS_EM_restart)
+export(LDS_ensemble)
 export(LDS_reconstruction)
 export(LDS_rep)
 export(PCR_reconstruction)
