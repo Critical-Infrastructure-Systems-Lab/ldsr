@@ -16,7 +16,7 @@ study period, followed by one column for each principal components.}
 
 \item{CV.reps}{Number of cross-validation runs.}
 
-\item{Z}{A list of CV.reps elements, each is a vector of length k.See Details.}
+\item{Z}{A list of CV.reps elements, each is a vector of length k. See Details.}
 }
 \value{
 A list of reconstruction and cross-validation results
