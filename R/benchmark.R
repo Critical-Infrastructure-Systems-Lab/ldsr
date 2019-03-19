@@ -58,8 +58,16 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
     # Cross validation ------------------------------------------------------------
     N <- nrow(y)
     if (missing(k)) k <- ceiling(N/10) # Default 10%
-    if (is.null(Z)) Z <- replicate(CV.reps, sample(1:N, size = k, replace = FALSE))
-    if (is.list(Z)) Z <- matrix(unlist(Z), ncol = CV.reps)
+    if (is.null(Z)) {
+      Z <- replicate(CV.reps, sample(1:N, size = k, replace = FALSE))
+    } else {
+      if (is.list(Z)) {
+        CV.reps <- length(Z)
+        Z <- matrix(unlist(Z), ncol = CV.reps)
+      } else {
+        CV.reps <- ncol(Z)
+      }
+    }
     if (k > 1) { # Leave-k-out, k > 1
         cv_res <- apply(Z, 2, cv)
         metrics.dist <- rbindlist(lapply(cv_res, '[[', 'metric'))

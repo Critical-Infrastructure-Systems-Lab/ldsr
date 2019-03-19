@@ -204,7 +204,11 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
   n.obs <- length(obs.ind)
   if (missing(k)) k <- ceiling(n.obs / 10)
   # Z: index in instrumental period
-  if (is.null(Z)) Z <- replicate(CV.reps, sample(obs.ind, k), simplify = FALSE)
+  if (is.null(Z)) {
+    Z <- replicate(CV.reps, sample(obs.ind, k), simplify = FALSE)
+  } else {
+    CV.reps <- length(Z)
+  }
   # ub and lb must be passed through to one_Cv, otherwise parallel run will produce an erroo.
   if (method == 'EM') ub <- lb <- NULL
 
