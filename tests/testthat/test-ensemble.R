@@ -14,3 +14,9 @@ test_that("Ensemble cross validation works in serial mode", {
               "list")
 })
 
+test_that("Ensemble cross validation works in parallel", {
+  expect_is(cvLDS_ensemble(P1annual, u.list, v.list, CV.reps = 2, num.restarts = 2, parallel = TRUE),
+            "list")
+})
+
+

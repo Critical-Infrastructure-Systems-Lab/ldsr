@@ -49,7 +49,6 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
                                lambda = 1, ub, lb, num.islands = 4, pop.per.island = 250,
                                niter = 1000, tol = 1e-5, return.raw = FALSE,
                                parallel = TRUE) {
-
   if (trans == 'log')
     Q.trans <- log(Qa$Qa)
   else if (trans == 'boxcox') {
@@ -94,36 +93,36 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
            }
     )
 
-    tidy_rec <- function(X, V, Y, theta, trans, years) {
-      CI.X <- 1.96*sqrt(V)
-      Xl <- X - CI.X # Lower range for X
-      Xu <- X + CI.X # Upper range for X
+  tidy_rec <- function(X, V, Y, theta, trans, years) {
+    CI.X <- 1.96*sqrt(V)
+    Xl <- X - CI.X # Lower range for X
+    Xu <- X + CI.X # Upper range for X
 
-      CI.Y <- 1.96 * (as.vector(theta$C) * V * as.vector(theta$C) + as.vector(theta$R))
-      Yl <- Y - CI.Y # Lower range for Y
-      Yu <- Y + CI.Y # Upper range for Y
+    CI.Y <- 1.96 * (as.vector(theta$C) * V * as.vector(theta$C) + as.vector(theta$R))
+    Yl <- Y - CI.Y # Lower range for Y
+    Yu <- Y + CI.Y # Upper range for Y
 
-      # Transform Y to Q and put in a data.table
-      X.out <- data.table(year = years, X, Xl, Xu)
-      Q.out <- switch(trans,
-                      log = data.table(Q = exp(Y),
-                                       Ql = exp(Yl),
-                                       Qu = exp(Yu)),
-                      boxcox = if (lambda == 0)
-                        data.table(Q = exp(Y),
-                                   Ql = exp(Yl),
-                                   Qu = exp(Yu))
-                      else
-                        data.table(Q = (Y*lambda + 1)^(1/lambda),
-                                   Ql = (Yl*lambda + 1)^(1/lambda),
-                                   Qu = (Yu*lambda + 1)^(1/lambda)),
-                      # no transformation
-                      data.table(Q = Y,
-                                 Ql = Yl,
-                                 Qu = Yu)
-      )
-      cbind(X.out, Q.out)
-    }
+    # Transform Y to Q and put in a data.table
+    X.out <- data.table(year = years, X, Xl, Xu)
+    Q.out <- switch(trans,
+                    log = data.table(Q = exp(Y),
+                                     Ql = exp(Yl),
+                                     Qu = exp(Yu)),
+                    boxcox = if (lambda == 0)
+                      data.table(Q = exp(Y),
+                                 Ql = exp(Yl),
+                                 Qu = exp(Yu))
+                    else
+                      data.table(Q = (Y*lambda + 1)^(1/lambda),
+                                 Ql = (Yl*lambda + 1)^(1/lambda),
+                                 Qu = (Yu*lambda + 1)^(1/lambda)),
+                    # no transformation
+                    data.table(Q = Y,
+                               Ql = Yl,
+                               Qu = Yu)
+    )
+    cbind(X.out, Q.out)
+  }
   # Construct 95% confidence intervals and return
   years <- (Qa[1, year] - n.paleo):Qa[.N, year]
   with(results, {
@@ -171,14 +170,24 @@ LDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
     stop("Length of u and v lists must be the same.")
 
   # Pass on all arguments except u.list and v.list
-  args <- match.call()[-1] %>% as.list() %>% '$<-'('u.list', NULL) %>% '$<-'('v.list', NULL)
-
-  ensemble <- mapply(LDS_reconstruction, u = u.list, v = v.list, MoreArgs = args, SIMPLIFY = FALSE)
+  if (parallel) {
+    nbCores <- detectCores() - 1
+    cl <- makeCluster(nbCores)
+    registerDoParallel(cl)
+    ensemble <- foreach(i = 1:length(u.list)) %dopar%
+      LDS_reconstruction(Qa, u.list[[i]], v.list[[i]], method, trans, init, num.restarts, return.init,
+                         lambda, ub, lb, num.islands, pop.per.island,
+                         niter, tol, return.raw, parallel = FALSE)
+    stopCluster(cl)
+  } else {
+    args <- match.call()[-1] %>% as.list() %>% '$<-'('u.list', NULL) %>% '$<-'('v.list', NULL)
+    ensemble <- mapply(LDS_reconstruction, u = u.list, v = v.list, MoreArgs = args, SIMPLIFY = FALSE)
+  }
 
   list(rec = ensemble %>%
          lapply( '[[', 'rec') %>%
          rbindlist() %>%
-         .[, .(X = mean(X), Q = mean(Q)), by = 'year'],
+         .[, .(X = mean(X), Q = mean(Q)), by = year],
        theta = lapply(ensemble, '[[', 'theta'))
 
 }
@@ -268,11 +277,31 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
 
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
-
+  if (method == 'EM') ub <- lb <- NULL
+  obs.ind <- which(!is.na(Qa$Qa))
+  n.obs <- length(obs.ind)
+  if (missing(k)) k <- ceiling(n.obs / 10)
+  # Z: index in instrumental period
+  if (is.null(Z)) {
+    Z <- replicate(CV.reps, sample(obs.ind, k), simplify = FALSE)
+  } else {
+    CV.reps <- length(Z)
+  }
   # Pass on all arguments except u.list and v.list
-  args <- match.call()[-1] %>% as.list() %>% '$<-'('u.list', NULL) %>% '$<-'('v.list', NULL)
-
-  ensemble <- mapply(cvLDS, u = u.list, v = v.list, MoreArgs = args, SIMPLIFY = FALSE)
+  if (parallel) {
+    nbCores <- detectCores() - 1
+    cl <- makeCluster(nbCores)
+    registerDoParallel(cl)
+    ensemble <- foreach(i = 1:length(u.list)) %dopar%
+      cvLDS(Qa, u.list[[i]], v.list[[i]], method, trans, k, CV.reps, Z,
+            init, num.restarts,
+            lambda, ub, lb, num.islands, pop.per.island,
+            niter, tol, parallel = FALSE)
+    stopCluster(cl)
+  } else {
+    args <- match.call()[-1] %>% as.list() %>% '$<-'('u.list', NULL) %>% '$<-'('v.list', NULL)
+    ensemble <- mapply(cvLDS, u = u.list, v = v.list, MoreArgs = args, SIMPLIFY = FALSE)
+  }
 
   ensemble.metrics <- sapply(ensemble, '[[', 'metrics') %>% t()
 
