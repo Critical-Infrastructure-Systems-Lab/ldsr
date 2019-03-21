@@ -5,9 +5,9 @@
 \title{Ensemble reconstruction. This is a wrapper for \link{LDS_reconstruction}.}
 \usage{
 LDS_ensemble(Qa, u.list, v.list, method = "EM", trans = "log",
-  init = NULL, num.restarts = 100, return.init = TRUE, lambda = 1,
-  ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
-  niter = 1000, tol = 1e-05, return.raw = FALSE, parallel = TRUE)
+  init = NULL, num.restarts = 100, lambda = 1, ub = NULL,
+  lb = NULL, num.islands = 4, pop.per.island = 250, niter = 1000,
+  tol = 1e-05, return.raw = FALSE, parallel = TRUE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
@@ -25,9 +25,6 @@ LDS_ensemble(Qa, u.list, v.list, method = "EM", trans = "log",
 \item{num.restarts}{if init is not given then num.restarts must be provided. In this case the function
 will randomize the initial value by sampling uniformly within the range for each parameters
 (A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).}
-
-\item{return.init}{Indicate whether the initial condition that results in the highest
-log-likelihood is returned. Default is TRUE.}
 
 \item{ub}{Upper bounds, a vector whose length is the number of parameters}
 

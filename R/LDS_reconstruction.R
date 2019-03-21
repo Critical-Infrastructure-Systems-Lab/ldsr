@@ -49,6 +49,10 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
                                lambda = 1, ub, lb, num.islands = 4, pop.per.island = 250,
                                niter = 1000, tol = 1e-5, return.raw = FALSE,
                                parallel = TRUE) {
+
+  if (method != 'EM' && (is.null(ub) || is.null(lb)))
+    stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
+
   if (trans == 'log')
     Q.trans <- log(Qa$Qa)
   else if (trans == 'boxcox') {
@@ -57,9 +61,6 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
   } else if (trans == 'none')
     Q.trans <- Qa$Qa
   else stop('Accepted transformations are "log", "boxcox" and "none"')
-
-  if (method != 'EM' && (is.null(ub) || is.null(lb)))
-    stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
 
   # Attach NA and make the y matrix
   mu <- mean(Q.trans, na.rm = TRUE)
@@ -161,7 +162,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
 #' @return A list of models in the ensemble
 #' @export
 LDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
-                         init = NULL, num.restarts = 100, return.init = TRUE,
+                         init = NULL, num.restarts = 100,
                          lambda = 1, ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
                          niter = 1000, tol = 1e-5, return.raw = FALSE,
                          parallel = TRUE) {
@@ -169,26 +170,37 @@ LDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
 
-  # Pass on all arguments except u.list and v.list
   if (parallel) {
     nbCores <- detectCores() - 1
     cl <- makeCluster(nbCores)
     registerDoParallel(cl)
-    ensemble <- foreach(i = 1:length(u.list)) %dopar%
-      LDS_reconstruction(Qa, u.list[[i]], v.list[[i]], method, trans, init, num.restarts, return.init,
+    ensemble.full <- foreach(i = 1:length(u.list)) %dopar%
+      LDS_reconstruction(Qa, u.list[[i]], v.list[[i]], method, trans,
+                         init, num.restarts, return.init = FALSE,
                          lambda, ub, lb, num.islands, pop.per.island,
                          niter, tol, return.raw, parallel = FALSE)
     stopCluster(cl)
   } else {
-    args <- match.call()[-1] %>% as.list() %>% '$<-'('u.list', NULL) %>% '$<-'('v.list', NULL)
-    ensemble <- mapply(LDS_reconstruction, u = u.list, v = v.list, MoreArgs = args, SIMPLIFY = FALSE)
+    ensemble.full <- mapply(LDS_reconstruction, u = u.list, v = v.list,
+                            MoreArgs = list(
+                              Qa = Qa, method = method, trans = trans,
+                              init = init, num.restarts = num.restarts, return.init = FALSE,
+                              lambda = lambda, ub = ub, lb = lb,
+                              num.islands = num.islands, pop.per.island = pop.per.island,
+                              niter = niter, tol = tol, return.raw = return.raw,
+                              parallel = FALSE
+                            ),
+                            SIMPLIFY = FALSE)
   }
 
-  list(rec = ensemble %>%
-         lapply( '[[', 'rec') %>%
-         rbindlist() %>%
-         .[, .(X = mean(X), Q = mean(Q)), by = year],
-       theta = lapply(ensemble, '[[', 'theta'))
+  ensemble <- ensemble.full %>%
+    lapply( '[[', 'rec') %>%
+    rbindlist() %>%
+    .[, member := 1:.N, by = year]
+
+  list(rec = ensemble[, .(X = mean(X), Q = mean(Q)), by = year],
+       ensemble = ensemble,
+       theta = lapply(ensemble.full, '[[', 'theta'))
 
 }
 
@@ -277,7 +289,7 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
 
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
-  if (method == 'EM') ub <- lb <- NULL
+
   obs.ind <- which(!is.na(Qa$Qa))
   n.obs <- length(obs.ind)
   if (missing(k)) k <- ceiling(n.obs / 10)
@@ -287,24 +299,46 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
   } else {
     CV.reps <- length(Z)
   }
-  # Pass on all arguments except u.list and v.list
-  if (parallel) {
+  # ub and lb must be passed through to one_Cv, otherwise parallel run will produce an erroo.
+  if (method == 'EM') ub <- lb <- NULL
+
+  one_CV_ensemble <- function(omit, Qa, u.list, v.list, method, trans, init, num.restarts,
+                              lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
+
+    # Don't change Qa so that we can still calculate metrics later
+    Qa2 <- copy(Qa) %>% .[omit, Qa := NA]
+    # Parallel is run at the outer loop, i.e. for each cross-validation run
+    ans <- LDS_ensemble(Qa2, u.list, v.list, method, trans, init, num.restarts,
+                        lambda, ub, lb, num.islands, pop.per.island, niter, tol, return.raw = FALSE,
+                        parallel = FALSE)
+
+    Qa.hat <- ans$rec[year %in% Qa$year, Q]
+    metric <- calculate_metrics(Qa.hat, Qa$Qa, omit)
+
+    list(metric = metric, Ycv = Qa.hat)
+  }
+
+  if (parallel)  {
     nbCores <- detectCores() - 1
     cl <- makeCluster(nbCores)
     registerDoParallel(cl)
-    ensemble <- foreach(i = 1:length(u.list)) %dopar%
-      cvLDS(Qa, u.list[[i]], v.list[[i]], method, trans, k, CV.reps, Z,
-            init, num.restarts,
-            lambda, ub, lb, num.islands, pop.per.island,
-            niter, tol, parallel = FALSE)
+    cv.results <- foreach(omit = Z) %dopar%
+      one_CV_ensemble(omit, Qa, u.list, v.list, method, trans, init, num.restarts,
+                      lambda, ub, lb, num.islands, pop.per.island, niter, tol)
     stopCluster(cl)
   } else {
-    args <- match.call()[-1] %>% as.list() %>% '$<-'('u.list', NULL) %>% '$<-'('v.list', NULL)
-    ensemble <- mapply(cvLDS, u = u.list, v = v.list, MoreArgs = args, SIMPLIFY = FALSE)
+    cv.results <- lapply(Z, function(omit)
+      one_CV_ensemble(omit, Qa, u.list, v.list, method, trans, init, num.restarts,
+                      lambda, ub, lb, num.islands, pop.per.island, niter, tol))
   }
 
-  ensemble.metrics <- sapply(ensemble, '[[', 'metrics') %>% t()
+  metrics.dist <- rbindlist(lapply(cv.results, '[[', 'metric'))
+  Ycv <- as.data.table(sapply(cv.results, '[[', 'Ycv'))
+  Ycv$year <- Qa$year
+  Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
 
-  list(metrics = colMeans(ensemble.metrics),
-       ensemble.metrics = ensemble.metrics)
+  return(list(metrics = colMeans(metrics.dist[, 1:5]),
+              metrics.dist = metrics.dist,
+              Ycv = Ycv,
+              Z = Z))
 }
