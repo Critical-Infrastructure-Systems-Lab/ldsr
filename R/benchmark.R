@@ -41,10 +41,18 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
     pc$year <- NULL
 
     # Model fitting
-    fit <- step(lm(log(Qa) ~ . , data = df), direction = 'backward', trace = 0)
+    tryCatch(
+      fit <- step(lm(log(Qa) ~ . , data = df), direction = 'backward', trace = 0),
+      error = function(e) {
+        if (substr(e$message, 1, 16) == 'AIC is -infinity')
+          warning('Backward selection finds AIC = -Infinity, only PC1 is used.')
+      },
+      finally = {fit <- lm(log(Qa) ~ PC1 , data = df)}
+    )
+
     selected <- names(fit$model)[-1]   # First element is intercept
     if (length(selected) == 0) {
-        warning("Backward stepwise returned empty model; use all variables instead.")
+        warning('Backward selection returned empty model; model selection is skipped.')
         fit <- lm(log(Qa) ~ . , data = df)
         selected <- names(fit$model)[-1]   # First element is intercept
     }
