@@ -309,8 +309,8 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
     Qa2 <- copy(Qa) %>% .[omit, Qa := NA]
     # Parallel is run at the outer loop, i.e. for each cross-validation run
     ans <- LDS_ensemble(Qa2, u.list, v.list, method, trans, init, num.restarts,
-                        lambda, ub, lb, num.islands, pop.per.island, niter, tol, return.raw = FALSE,
-                        parallel = FALSE)
+                        lambda, ub, lb, num.islands, pop.per.island, niter, tol,
+                        return.raw = FALSE, parallel = FALSE)
 
     Qa.hat <- ans$rec[year %in% Qa$year, Q]
     metric <- calculate_metrics(Qa.hat, Qa$Qa, omit)
