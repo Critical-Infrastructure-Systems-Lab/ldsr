@@ -4,10 +4,10 @@
 \alias{LDS_ensemble}
 \title{Ensemble reconstruction. This is a wrapper for \link{LDS_reconstruction}.}
 \usage{
-LDS_ensemble(Qa, u.list, v.list, method = "EM", trans = "log",
-  init = NULL, num.restarts = 100, lambda = 1, ub = NULL,
-  lb = NULL, num.islands = 4, pop.per.island = 250, niter = 1000,
-  tol = 1e-05, return.raw = FALSE, parallel = TRUE)
+LDS_ensemble(Qa, u.list, v.list, start.year, method = "EM",
+  trans = "log", init = NULL, num.restarts = 100, lambda = 1,
+  ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
+  niter = 1000, tol = 1e-05, return.raw = FALSE, parallel = TRUE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
@@ -15,6 +15,8 @@ LDS_ensemble(Qa, u.list, v.list, method = "EM", trans = "log",
 \item{u.list}{List of u matrices}
 
 \item{v.list}{List of v matrices#'}
+
+\item{start.year}{Starting year of the paleo period. \code{start.year + ncol(u) - 1} will determine the last year of the study horizon, which must be greater than or equal to the last year in \code{Qa}.}
 
 \item{method}{Either EM or GA (note: GA is experimental)}
 

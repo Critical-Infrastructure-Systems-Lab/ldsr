@@ -25,6 +25,7 @@ make_init <- function(init, d, num.restarts) {
 #' The initial conditions can either be randomized (specifiled by num.restarts) or provided beforehand.
 #' @param Qa Observations: a data.table of annual streamflow with at least two columns: year and Qa.
 #' @inheritParams LDS_EM_restart
+#' @param start.year Starting year of the paleo period. `start.year + ncol(u) - 1` will determine the last year of the study horizon, which must be greater than or equal to the last year in `Qa`.
 #' @param method Either EM or GA (note: GA is experimental)
 #' @param trans Transformatin of flow before model fitting, can be either "log", "boxcox" or "none".
 #' @param num.restarts if init is not given then num.restarts must be provided. In this case the function
@@ -44,7 +45,7 @@ make_init <- function(init, d, num.restarts) {
 #' * lik: maximum likelihood
 #' * init: the initial condition that resulted in the maximum likelihood (if )
 #' @export
-LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
+LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
                                init = NULL, num.restarts = 100, return.init = TRUE,
                                lambda = 1, ub, lb, num.islands = 4, pop.per.island = 250,
                                niter = 1000, tol = 1e-5, return.raw = FALSE,
@@ -62,11 +63,18 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
     Q.trans <- Qa$Qa
   else stop('Accepted transformations are "log", "boxcox" and "none"')
 
+  if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
+
+  N <- ncol(u)
+  end.year <- start.year + N - 1
+  if (end.year < Qa[.N, year])
+    stop('The last year of u is earlier than the last year of the instrumental period.')
+
   # Attach NA and make the y matrix
   mu <- mean(Q.trans, na.rm = TRUE)
-  N <- ncol(u)
-  n.paleo <- N - nrow(Qa) # Number of years in the paleo period
-  y <- t(c(rep(NA, n.paleo), Q.trans - mu))
+  y <- t(c(rep(NA, Qa[1, year] - start.year), # Before the instrumental period
+           Q.trans - mu,     # Instrumental period
+           rep(NA, end.year - Qa[.N, year])))
 
   results <-
     switch(method,
@@ -125,7 +133,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
     cbind(X.out, Q.out)
   }
   # Construct 95% confidence intervals and return
-  years <- (Qa[1, year] - n.paleo):Qa[.N, year]
+  years <- start.year : end.year
   with(results, {
 
     rec <- tidy_rec(as.vector(fit$X),
@@ -161,7 +169,7 @@ LDS_reconstruction <- function(Qa, u, v, method = 'EM', trans = 'log',
 #' @inheritParams LDS_reconstruction
 #' @return A list of models in the ensemble
 #' @export
-LDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
+LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 'log',
                          init = NULL, num.restarts = 100,
                          lambda = 1, ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
                          niter = 1000, tol = 1e-5, return.raw = FALSE,
@@ -175,7 +183,7 @@ LDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
     cl <- makeCluster(nbCores)
     registerDoParallel(cl)
     ensemble.full <- foreach(i = 1:length(u.list)) %dopar%
-      LDS_reconstruction(Qa, u.list[[i]], v.list[[i]], method, trans,
+      LDS_reconstruction(Qa, u.list[[i]], v.list[[i]], start.year, method, trans,
                          init, num.restarts, return.init = FALSE,
                          lambda, ub, lb, num.islands, pop.per.island,
                          niter, tol, return.raw, parallel = FALSE)
@@ -183,7 +191,7 @@ LDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
   } else {
     ensemble.full <- mapply(LDS_reconstruction, u = u.list, v = v.list,
                             MoreArgs = list(
-                              Qa = Qa, method = method, trans = trans,
+                              Qa = Qa, start.year = start.year, method = method, trans = trans,
                               init = init, num.restarts = num.restarts, return.init = FALSE,
                               lambda = lambda, ub = ub, lb = lb,
                               num.islands = num.islands, pop.per.island = pop.per.island,
@@ -198,7 +206,7 @@ LDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
     rbindlist() %>%
     .[, member := 1:.N, by = year]
 
-  list(rec = ensemble[, .(X = mean(X), Q = mean(Q)), by = year],
+  list(rec = ensemble[, .(Q = mean(Q)), by = year],
        ensemble = ensemble,
        theta = lapply(ensemble.full, '[[', 'theta'))
 
@@ -215,7 +223,7 @@ LDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
 #'   * init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts.
 #'   * Z: If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created.
 #' @export
-cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
+cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
                   k, CV.reps = 100, Z = NULL,
                   init = NULL, num.restarts = 100,
                   lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
@@ -233,13 +241,13 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
   # ub and lb must be passed through to one_Cv, otherwise parallel run will produce an erroo.
   if (method == 'EM') ub <- lb <- NULL
 
-  one_CV <- function(omit, Qa, u, v, method, trans, init, num.restarts,
+  one_CV <- function(omit, Qa, u, v, start.year, method, trans, init, num.restarts,
                      lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
 
     # Don't change Qa so that we can still calculate metrics later
     Qa2 <- copy(Qa) %>% .[omit, Qa := NA]
     # Parallel is run at the outer loop, i.e. for each cross-validation run
-    ans <- LDS_reconstruction(Qa2, u, v, method, trans, init, num.restarts, return.init = FALSE,
+    ans <- LDS_reconstruction(Qa2, u, v, start.year, method, trans, init, num.restarts, return.init = FALSE,
                               lambda, ub, lb, num.islands, pop.per.island, niter, tol,
                               parallel = FALSE)
 
@@ -254,12 +262,12 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
     cl <- makeCluster(nbCores)
     registerDoParallel(cl)
     cv.results <- foreach(omit = Z) %dopar%
-      one_CV(omit, Qa, u, v, method, trans, init, num.restarts,
+      one_CV(omit, Qa, u, v, start.year, method, trans, init, num.restarts,
              lambda, ub, lb, num.islands, pop.per.island, niter, tol)
     stopCluster(cl)
   } else {
     cv.results <- lapply(Z, function(omit)
-      one_CV(omit, Qa, u, v, method, trans, init, num.restarts,
+      one_CV(omit, Qa, u, v, start.year, method, trans, init, num.restarts,
              lambda, ub, lb, num.islands, pop.per.island, niter, tol))
   }
 
@@ -281,7 +289,7 @@ cvLDS <- function(Qa, u, v, method = 'EM', trans = 'log',
 #' @inheritParams cvLDS
 #' @return same as cvLDS
 #' @export
-cvLDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
+cvLDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 'log',
                            k, CV.reps = 100, Z = NULL,
                            init = NULL, num.restarts = 100,
                            lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
@@ -302,13 +310,13 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
   # ub and lb must be passed through to one_Cv, otherwise parallel run will produce an erroo.
   if (method == 'EM') ub <- lb <- NULL
 
-  one_CV_ensemble <- function(omit, Qa, u.list, v.list, method, trans, init, num.restarts,
+  one_CV_ensemble <- function(omit, Qa, u.list, v.list, start.year, method, trans, init, num.restarts,
                               lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
 
     # Don't change Qa so that we can still calculate metrics later
     Qa2 <- copy(Qa) %>% .[omit, Qa := NA]
     # Parallel is run at the outer loop, i.e. for each cross-validation run
-    ans <- LDS_ensemble(Qa2, u.list, v.list, method, trans, init, num.restarts,
+    ans <- LDS_ensemble(Qa2, u.list, v.list, start.year, method, trans, init, num.restarts,
                         lambda, ub, lb, num.islands, pop.per.island, niter, tol,
                         return.raw = FALSE, parallel = FALSE)
 
@@ -323,12 +331,12 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, method = 'EM', trans = 'log',
     cl <- makeCluster(nbCores)
     registerDoParallel(cl)
     cv.results <- foreach(omit = Z) %dopar%
-      one_CV_ensemble(omit, Qa, u.list, v.list, method, trans, init, num.restarts,
+      one_CV_ensemble(omit, Qa, u.list, v.list, start.year, method, trans, init, num.restarts,
                       lambda, ub, lb, num.islands, pop.per.island, niter, tol)
     stopCluster(cl)
   } else {
     cv.results <- lapply(Z, function(omit)
-      one_CV_ensemble(omit, Qa, u.list, v.list, method, trans, init, num.restarts,
+      one_CV_ensemble(omit, Qa, u.list, v.list, start.year, method, trans, init, num.restarts,
                       lambda, ub, lb, num.islands, pop.per.island, niter, tol))
   }
 

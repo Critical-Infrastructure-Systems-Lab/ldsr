@@ -4,7 +4,7 @@
 \alias{LDS_reconstruction}
 \title{Learn LDS model with multiple initial conditions. This function can be called directly or wrapped in \link{LDS_ensemble}}
 \usage{
-LDS_reconstruction(Qa, u, v, method = "EM", trans = "log",
+LDS_reconstruction(Qa, u, v, start.year, method = "EM", trans = "log",
   init = NULL, num.restarts = 100, return.init = TRUE, lambda = 1,
   ub, lb, num.islands = 4, pop.per.island = 250, niter = 1000,
   tol = 1e-05, return.raw = FALSE, parallel = TRUE)
@@ -15,6 +15,8 @@ LDS_reconstruction(Qa, u, v, method = "EM", trans = "log",
 \item{u}{Input matrix for the state equation (m_u rows, T columns)}
 
 \item{v}{Input matrix for the output equation (m_v rows, T columns)}
+
+\item{start.year}{Starting year of the paleo period. \code{start.year + ncol(u) - 1} will determine the last year of the study horizon, which must be greater than or equal to the last year in \code{Qa}.}
 
 \item{method}{Either EM or GA (note: GA is experimental)}
 
