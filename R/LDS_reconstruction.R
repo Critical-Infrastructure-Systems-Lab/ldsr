@@ -206,7 +206,12 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
     rbindlist() %>%
     .[, member := 1:.N, by = year]
 
-  list(rec = ensemble[, .(Q = mean(Q)), by = year],
+  rec <- ensemble[, .(Q = mean(Q)), by = year]
+  Xstd <- ensemble[, .(year, X = X / sd(X)), by = member
+              ][, .(X = mean(X)), by = year
+              ][, X]
+  rec[, X := Xstd]
+  list(rec = rec[],
        ensemble = ensemble,
        theta = lapply(ensemble.full, '[[', 'theta'))
 
