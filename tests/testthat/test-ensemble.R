@@ -5,17 +5,17 @@ u.list <- list(u, u)
 v.list <- list(v, v)
 
 test_that("Ensemble model learning works", {
-    fit <- LDS_ensemble(P1annual, u.list, v.list, num.restarts = 12)
+    fit <- LDS_ensemble(P1annual, u.list, v.list, start.year = 1600, num.restarts = 12)
     expect_is(fit, "list")
 })
 
 test_that("Ensemble cross validation works in serial mode", {
-    expect_is(cvLDS_ensemble(P1annual, u.list, v.list, CV.reps = 2, num.restarts = 2, parallel = FALSE),
+    expect_is(cvLDS_ensemble(P1annual, u.list, v.list, start.year = 1600, CV.reps = 2, num.restarts = 2, parallel = FALSE),
               "list")
 })
 
 test_that("Ensemble cross validation works in parallel", {
-  expect_is(cvLDS_ensemble(P1annual, u.list, v.list, CV.reps = 2, num.restarts = 2, parallel = TRUE),
+  expect_is(cvLDS_ensemble(P1annual, u.list, v.list, start.year = 1600, CV.reps = 2, num.restarts = 2, parallel = TRUE),
             "list")
 })
 
