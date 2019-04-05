@@ -49,7 +49,7 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', trans = 'log
                                init = NULL, num.restarts = 100, return.init = TRUE,
                                lambda = 1, ub, lb, num.islands = 4, pop.per.island = 250,
                                niter = 1000, tol = 1e-5, return.raw = FALSE,
-                               parallel = TRUE) {
+                               parallel = TRUE, all.cores = FALSE) {
 
   if (method != 'EM' && (is.null(ub) || is.null(lb)))
     stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
@@ -82,7 +82,7 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', trans = 'log
              init <- make_init(init, nrow(u), num.restarts)
              # To avoid unnecessary overhead, only run in parallel mode if the init list is long enough
              if (parallel && length(init) > 10) {
-               LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE)
+               LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE, all.cores = all.cores)
              } else {
                if (parallel)
                  warning('Initial condition list is short, LDS_EM_restart() is run in sequential mode.')
@@ -173,13 +173,13 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
                          init = NULL, num.restarts = 100,
                          lambda = 1, ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
                          niter = 1000, tol = 1e-5, return.raw = FALSE,
-                         parallel = TRUE) {
+                         parallel = TRUE, all.cores = FALSE) {
 
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
 
   if (parallel) {
-    nbCores <- detectCores() - 1
+    nbCores <- detectCores() - { if (all.cores) 0 else 1 }
     cl <- makeCluster(nbCores)
     registerDoParallel(cl)
     ensemble.full <- foreach(i = 1:length(u.list)) %dopar%
@@ -232,7 +232,7 @@ cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
                   k, CV.reps = 100, Z = NULL,
                   init = NULL, num.restarts = 100,
                   lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
-                  niter = 1000, tol = 1e-5, parallel = TRUE) {
+                  niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
 
   obs.ind <- which(!is.na(Qa$Qa))
   n.obs <- length(obs.ind)
@@ -263,7 +263,7 @@ cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
   }
 
   if (parallel)  {
-    nbCores <- detectCores() - 1
+    nbCores <- detectCores() - { if (all.cores) 0 else 1 }
     cl <- makeCluster(nbCores)
     registerDoParallel(cl)
     cv.results <- foreach(omit = Z) %dopar%
@@ -298,7 +298,7 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans 
                            k, CV.reps = 100, Z = NULL,
                            init = NULL, num.restarts = 100,
                            lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
-                           niter = 1000, tol = 1e-5, parallel = TRUE) {
+                           niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
 
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
@@ -332,7 +332,7 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans 
   }
 
   if (parallel)  {
-    nbCores <- detectCores() - 1
+    nbCores <- detectCores() - { if (all.cores) 0 else 1 }
     cl <- makeCluster(nbCores)
     registerDoParallel(cl)
     cv.results <- foreach(omit = Z) %dopar%

@@ -13,10 +13,10 @@
 #' @export
 LDS_EM_restart <- function(y, u, v, init,
                            niter = 1000, tol = 1e-5, return.init = TRUE,
-                           parallel = FALSE) {
+                           parallel = FALSE, all.cores = FALSE) {
 
     if (parallel) {
-        nbCores <- detectCores() - 1
+        nbCores <- detectCores() - { if (all.cores) 0 else 1 }
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
         models <- foreach(init.val = init) %dopar% LDS_EM(y, u, v, init.val, niter, tol)
