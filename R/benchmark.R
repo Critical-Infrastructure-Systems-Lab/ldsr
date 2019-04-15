@@ -41,13 +41,14 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
     pc$year <- NULL
 
     # Model fitting
-    tryCatch(
-      fit <- step(lm(log(Qa) ~ . , data = df), direction = 'backward', trace = 0),
+    fit <- tryCatch(
+      step(lm(log(Qa) ~ . , data = df), direction = 'backward', trace = 0),
       error = function(e) {
-        if (substr(e$message, 1, 16) == 'AIC is -infinity')
+        if (substr(e$message, 1, 16) == 'AIC is -infinity') {
           warning('Backward selection finds AIC = -Infinity, only PC1 is used.')
-      },
-      finally = {fit <- lm(log(Qa) ~ PC1 , data = df)}
+          lm(log(Qa) ~ PC1 , data = df)
+        }
+      }
     )
 
     selected <- names(fit$model)[-1]   # First element is intercept
