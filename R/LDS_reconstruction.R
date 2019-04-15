@@ -211,10 +211,28 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
               ][, .(X = mean(X)), by = year
               ][, X]
   rec[, X := Xstd]
-  list(rec = rec[],
-       ensemble = ensemble,
-       theta = lapply(ensemble.full, '[[', 'theta'))
 
+  ans <- list(rec = rec[],
+              ensemble = ensemble,
+              theta = lapply(ensemble.full, '[[', 'theta'))
+
+  if (return.raw) {
+    ensemble.raw <- ensemble.full %>%
+      lapply( '[[', 'rec2') %>%
+      rbindlist() %>%
+      .[, member := 1:.N, by = year]
+
+    rec.raw <- ensemble.raw[, .(Q = mean(Q)), by = year]
+    Xstd.raw <- ensemble.raw[, .(year, X = X / sd(X)), by = member
+                           ][, .(X = mean(X)), by = year
+                           ][, X]
+    rec.raw[, X := Xstd.raw]
+
+    ans$rec.raw <- rec.raw
+    ans$ensemble.raw <- ensemble.raw
+  }
+
+  ans
 }
 
 #' Cross validate LDS model. This is a wrapper for [LDS_reconstruction]
