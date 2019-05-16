@@ -51,6 +51,7 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', trans = 'log
                                niter = 1000, tol = 1e-5, return.raw = FALSE,
                                parallel = TRUE, all.cores = FALSE) {
 
+  Qa <- as.data.table(Qa)
   if (method != 'EM' && (is.null(ub) || is.null(lb)))
     stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
 
@@ -175,6 +176,7 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
                          niter = 1000, tol = 1e-5, return.raw = FALSE,
                          parallel = TRUE, all.cores = FALSE) {
 
+  Qa <- as.data.table(Qa)
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
 
@@ -252,6 +254,7 @@ cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
                   lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
                   niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
 
+  Qa <- as.data.table(Qa)
   obs.ind <- which(!is.na(Qa$Qa))
   n.obs <- length(obs.ind)
   if (missing(k)) k <- ceiling(n.obs / 10)
@@ -318,6 +321,7 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans 
                            lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
                            niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
 
+  Qa <- as.data.table(Qa)
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
 
