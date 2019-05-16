@@ -28,11 +28,8 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
     }
 
     # Main model  -------------------------------------------------------------------
-    Qa <- as.data.table(Qa)
+    Qa <- as.data.table(Qa)[year <= max(pc$year)]
     pc <- as.data.table(pc)
-    # Remove observed value after the end of the paleorecord and missing values
-    y <- Qa[year <= max(pc$year) & (!is.na(Qa))]
-    mu <- mean(y$Qa)
 
     # Important to remove year otherwise it'll be come a predictor
     years <- pc$year
@@ -65,7 +62,7 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
     df2$Qa <- df$Qa
 
     # Cross validation ------------------------------------------------------------
-    N <- nrow(y)
+    N <- Qa[!is.na(Qa), .N]
     if (missing(k)) k <- ceiling(N/10) # Default 10%
     if (is.null(Z)) {
       Z <- replicate(CV.reps, sample(1:N, size = k, replace = FALSE))
