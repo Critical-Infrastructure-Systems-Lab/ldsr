@@ -108,7 +108,6 @@ PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
 
     fit <- lm(log(Qa) ~ . , data = df, subset = setdiff(1:N, z))
     Qa.hat <- exp(predict(fit, newdata = df))
-
     return(list(metric = calculate_metrics(Qa.hat, df$Qa, z), Ycv = Qa.hat))
   }
 
@@ -117,7 +116,7 @@ PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
   pc.list <- lapply(pc.list, as.data.table)
 
   # Important to remove year otherwise it'll be come a predictor
-  ensembleResults <- lapply(pc.list, function(pc) {
+  ensemble <- lapply(pc.list, function(pc) {
     years <- pc$year
     df <- merge(pc, Qa, by = 'year')
     df$year <- NULL
@@ -145,13 +144,14 @@ PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
     rec$year <- years
 
     outCols <- c(selected, 'Qa')
-    list(rec = rec, coeffs = fit$coefficients, selectedPC = df[, ..outCols])
+    list(rec = rec,
+         coeffs = fit$coefficients,
+         sigma = summary(fit)$sigma,
+         selectedPC = df[, ..outCols])
 
   })
 
-  ensemble <- lapply(ensembleResults, '[[', 'rec')
-  coeffs <- lapply(ensembleResults, '[[', 'coeffs')
-  rec <- ensemble %>% rbindlist() %>% .[, .(Qa = mean(Q)), by = year]
+  rec <- lapply(ensemble, '[[', 'rec') %>% rbindlist() %>% .[, .(Qa = mean(Q)), by = year]
 
   # Cross validation ------------------------------------------------------------
   N <- Qa[!is.na(Qa), .N]
@@ -166,34 +166,24 @@ PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
       CV.reps <- ncol(Z)
     }
   }
-  sv.list <- lapply(ensemble, '[[', 'sv')
-  cvEnsemble <- lapply(1:length(pc.list), function(i) {
+  metrics.dist <- sapply(1:length(pc.list), function(i) {
 
-    df <- ensembleResults[[i]]$selectedPC
+    df <- ensemble[[i]]$selectedPC
     cv_res <- if (k > 1) { # Leave-k-out, k > 1
       apply(Z, 2, oneCV, df = df)
     } else { # Leave-one-out
       lapply(1:N, oneCV, df = df)
     }
-    metrics.dist <- rbindlist(lapply(cv_res, '[[', 'metric'))
-    Ycv <- as.data.table(sapply(cv_res, '[[', 'Ycv'))
-    Ycv$year <- Qa$year
-    Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
-    metrics <- colMeans(metrics.dist)
-
-  })
-
-
+    lapply(cv_res, '[[', 'metric') %>% rbindlist() %>% colMeans()
+  }) %>%
+    t() %>%
+    as.data.table()
 
   return(list(
     rec = rec,
     ensemble = ensemble,
-    coeffs = fit$coefficients,
-    sigma = summary(fit)$sigma,
-    selected = selected,
     metrics.dist = metrics.dist,
     metrics = colMeans(metrics.dist),
-    Ycv = Ycv,
     Z = t(Z)
   ))
 }
