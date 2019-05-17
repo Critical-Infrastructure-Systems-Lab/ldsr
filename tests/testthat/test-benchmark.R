@@ -10,3 +10,7 @@ test_that("Benchmark works with AIC = -Infinity", {
   expect_warning(fit <- PCR_reconstruction(ldsr:::P5annual, ldsr:::P5pc))
   expect_is(fit, "list")
 })
+
+test_that("Benchmark ensemble works", {
+  expect_is(PCR_ensemble(P1annual, list(P1pc, P1pc)), "list")
+})
