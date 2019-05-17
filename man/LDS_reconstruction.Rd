@@ -7,7 +7,8 @@
 LDS_reconstruction(Qa, u, v, start.year, method = "EM", trans = "log",
   init = NULL, num.restarts = 100, return.init = TRUE, lambda = 1,
   ub, lb, num.islands = 4, pop.per.island = 250, niter = 1000,
-  tol = 1e-05, return.raw = FALSE, parallel = TRUE)
+  tol = 1e-05, return.raw = FALSE, parallel = TRUE,
+  all.cores = FALSE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
