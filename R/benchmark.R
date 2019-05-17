@@ -15,23 +15,109 @@
 #' @export
 PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
 
-    # Function to calculate cross validation metrics
-    cv <- function(z) {
-        # Leave-k-out cross validation with the indices of the k data points to be left out supplied in z
-        # Returns a vector of performance metrics
+  # Function to calculate cross validation metrics
+  cv <- function(z) {
+    # Leave-k-out cross validation with the indices of the k data points to be left out supplied in z
+    # Returns a vector of performance metrics
+    fit <- lm(log(Qa) ~ . , data = df2, subset = setdiff(1:N, z))
+    Qa.hat <- exp(predict(fit, newdata = df2))
 
-        fit <- lm(log(Qa) ~ . , data = df2, subset = setdiff(1:N, z))
-        Qa.hat <- exp(predict(fit, newdata = df))
+    return(list(metric = calculate_metrics(Qa.hat, df2$Qa, z), Ycv = Qa.hat))
+  }
 
-        return(list(metric = calculate_metrics(Qa.hat, df2$Qa, z),
-                    Ycv = Qa.hat))
+  # Main model  -------------------------------------------------------------------
+  Qa <- as.data.table(Qa)[year <= max(pc$year)]
+  pc <- as.data.table(pc)
+
+  # Important to remove year otherwise it'll be come a predictor
+  years <- pc$year
+  df <- merge(pc, Qa, by = 'year')
+  df$year <- NULL
+  pc$year <- NULL
+
+  # Model fitting
+  fit <- tryCatch(
+    step(lm(log(Qa) ~ . , data = df), direction = 'backward', trace = 0),
+    error = function(e) {
+      if (substr(e$message, 1, 16) == 'AIC is -infinity') {
+        warning('Backward selection finds AIC = -Infinity, only PC1 is used.')
+        lm(log(Qa) ~ PC1 , data = df)
+      }
     }
+  )
 
-    # Main model  -------------------------------------------------------------------
-    Qa <- as.data.table(Qa)[year <= max(pc$year)]
-    pc <- as.data.table(pc)
+  selected <- names(fit$model)[-1]   # First element is intercept
+  if (length(selected) == 0) {
+    warning('Backward selection returned empty model; model selection is skipped.')
+    fit <- lm(log(Qa) ~ . , data = df)
+    selected <- names(fit$model)[-1]   # First element is intercept
+  }
+  rec <- data.table(exp(predict(fit, newdata = pc, interval = 'confidence')))
+  colnames(rec) <- c('Q', 'Ql', 'Qu')
+  rec$year <- years
 
-    # Important to remove year otherwise it'll be come a predictor
+  df2 <- df[, ..selected]
+  df2$Qa <- df$Qa
+
+  # Cross validation ------------------------------------------------------------
+  N <- Qa[!is.na(Qa), .N]
+  if (missing(k)) k <- ceiling(N/10) # Default 10%
+  if (is.null(Z)) {
+    Z <- replicate(CV.reps, sample(1:N, size = k, replace = FALSE))
+  } else {
+    if (is.list(Z)) {
+      CV.reps <- length(Z)
+      Z <- matrix(unlist(Z), ncol = CV.reps)
+    } else {
+      CV.reps <- ncol(Z)
+    }
+  }
+  cv_res <- if (k > 1) { # Leave-k-out, k > 1
+    apply(Z, 2, cv)
+  } else { # Leave-one-out
+    lapply(1:N, cv)
+  }
+  metrics.dist <- rbindlist(lapply(cv_res, '[[', 'metric'))
+  Ycv <- as.data.table(sapply(cv_res, '[[', 'Ycv'))
+  Ycv$year <- Qa$year
+  Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
+
+  return(list(
+    rec = rec,
+    coeffs = fit$coefficients,
+    sigma = summary(fit)$sigma,
+    selected = selected,
+    metrics.dist = metrics.dist,
+    metrics = colMeans(metrics.dist),
+    Ycv = Ycv,
+    Z = t(Z)
+  ))
+}
+
+#' Same as `PCR` but using ensemble model
+#'
+#' @inheritParams PCR_reconstruction
+#' @param pc.list A list, each element is a set of principal component as in `PCR_reconstruction`'s `pc`
+#' @export
+PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
+
+  # Function to calculate cross validation metrics
+  oneCV <- function(z, df) {
+    # Leave-k-out cross validation with the indices of the k data points to be left out supplied in z
+    # Returns a vector of performance metrics
+
+    fit <- lm(log(Qa) ~ . , data = df, subset = setdiff(1:N, z))
+    Qa.hat <- exp(predict(fit, newdata = df))
+
+    return(list(metric = calculate_metrics(Qa.hat, df$Qa, z), Ycv = Qa.hat))
+  }
+
+  # Main model  -------------------------------------------------------------------
+  Qa <- as.data.table(Qa)[year <= max(pc.list[[1]]$year)]
+  pc.list <- lapply(pc.list, as.data.table)
+
+  # Important to remove year otherwise it'll be come a predictor
+  ensembleResults <- lapply(pc.list, function(pc) {
     years <- pc$year
     df <- merge(pc, Qa, by = 'year')
     df$year <- NULL
@@ -50,49 +136,64 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
 
     selected <- names(fit$model)[-1]   # First element is intercept
     if (length(selected) == 0) {
-        warning('Backward selection returned empty model; model selection is skipped.')
-        fit <- lm(log(Qa) ~ . , data = df)
-        selected <- names(fit$model)[-1]   # First element is intercept
+      warning('Backward selection returned empty model; model selection is skipped.')
+      fit <- lm(log(Qa) ~ . , data = df)
+      selected <- names(fit$model)[-1]   # First element is intercept
     }
     rec <- data.table(exp(predict(fit, newdata = pc, interval = 'confidence')))
     colnames(rec) <- c('Q', 'Ql', 'Qu')
     rec$year <- years
 
-    df2 <- df[, ..selected]
-    df2$Qa <- df$Qa
+    outCols <- c(selected, 'Qa')
+    list(rec = rec, coeffs = fit$coefficients, selectedPC = df[, ..outCols])
 
-    # Cross validation ------------------------------------------------------------
-    N <- Qa[!is.na(Qa), .N]
-    if (missing(k)) k <- ceiling(N/10) # Default 10%
-    if (is.null(Z)) {
-      Z <- replicate(CV.reps, sample(1:N, size = k, replace = FALSE))
-    } else {
-      if (is.list(Z)) {
-        CV.reps <- length(Z)
-        Z <- matrix(unlist(Z), ncol = CV.reps)
-      } else {
-        CV.reps <- ncol(Z)
-      }
-    }
-    if (k > 1) { # Leave-k-out, k > 1
-        cv_res <- apply(Z, 2, cv)
-        metrics.dist <- rbindlist(lapply(cv_res, '[[', 'metric'))
-        Ycv <- as.data.table(sapply(cv_res, '[[', 'Ycv'))
-        Ycv$year <- Qa$year
-        Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
-    } else {
-        # Leave-one-out
-        cv_res <- rbindlist(lapply(1:N, cv))
-    }
+  })
 
-    return(list(
-        rec = rec,
-        coeffs = fit$coefficients,
-        sigma = summary(fit)$sigma,
-        selected = selected,
-        metrics.dist = metrics.dist,
-        metrics = colMeans(metrics.dist),
-        Ycv = Ycv,
-        Z = t(Z)
-    ))
+  ensemble <- lapply(ensembleResults, '[[', 'rec')
+  coeffs <- lapply(ensembleResults, '[[', 'coeffs')
+  rec <- ensemble %>% rbindlist() %>% .[, .(Qa = mean(Q)), by = year]
+
+  # Cross validation ------------------------------------------------------------
+  N <- Qa[!is.na(Qa), .N]
+  if (missing(k)) k <- ceiling(N/10) # Default 10%
+  if (is.null(Z)) {
+    Z <- replicate(CV.reps, sample(1:N, size = k, replace = FALSE))
+  } else {
+    if (is.list(Z)) { # LDS takes Z as a list but for legacy this function takes Z as a matrix
+      CV.reps <- length(Z)
+      Z <- matrix(unlist(Z), ncol = CV.reps)
+    } else {
+      CV.reps <- ncol(Z)
+    }
+  }
+  sv.list <- lapply(ensemble, '[[', 'sv')
+  cvEnsemble <- lapply(1:length(pc.list), function(i) {
+
+    df <- ensembleResults[[i]]$selectedPC
+    cv_res <- if (k > 1) { # Leave-k-out, k > 1
+      apply(Z, 2, oneCV, df = df)
+    } else { # Leave-one-out
+      lapply(1:N, oneCV, df = df)
+    }
+    metrics.dist <- rbindlist(lapply(cv_res, '[[', 'metric'))
+    Ycv <- as.data.table(sapply(cv_res, '[[', 'Ycv'))
+    Ycv$year <- Qa$year
+    Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
+    metrics <- colMeans(metrics.dist)
+
+  })
+
+
+
+  return(list(
+    rec = rec,
+    ensemble = ensemble,
+    coeffs = fit$coefficients,
+    sigma = summary(fit)$sigma,
+    selected = selected,
+    metrics.dist = metrics.dist,
+    metrics = colMeans(metrics.dist),
+    Ycv = Ycv,
+    Z = t(Z)
+  ))
 }
