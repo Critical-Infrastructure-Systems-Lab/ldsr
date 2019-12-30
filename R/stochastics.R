@@ -56,32 +56,3 @@ LDS_rep <- function(theta, u = NULL, v = NULL, years, num.reps = 100, mu = 0, ex
                      function(i) one_LDS_rep(i, theta, u, v, years, mu, exp.trans)))
 
 }
-
-#' Plot stochastic replicates
-#'
-#' @param reps Results of [LDS_rep].
-#' @return A plot with two panels: stochastic replicates of streamflow and catchment state
-#' @export
-plot_replicates <- function(reps) {
-
-    # Plot streamflow
-    p <- ggplot(reps) +
-        geom_line(aes(year, simQ, group = rep), colour = 'gray80') +
-        geom_line(aes(year, Q), data = lds$rec, colour = 'black') +
-        labs(x = 'Year',
-             y = 'Annual streamflow, million m\u00B3') +
-        theme_cowplot() +
-        panel_border('black')
-    # Plot catchment state
-    q <- ggplot(reps) +
-        geom_line(aes(year, simX, group = rep), colour = 'gray80') +
-        geom_line(aes(year, X), data = lds$rec, colour = 'black') +
-        labs(x = 'Year',
-             y = 'Flow regime') +
-        theme_cowplot() +
-        panel_border('black')
-
-    plot_grid(p, q, ncol = 1, axis = 'r', align = 'v',
-              labels = c('(a)', '(b)'),
-              label_size = 10)
-}
