@@ -141,7 +141,51 @@ ggplot(dt, aes(model, value)) +
 
 ### Reconstruction in the instrumental period
 
-The package comes with a `plot_reconstruction()` function to visualize the results. The function also allows comparison with a benchmark.
+Let us first create a function to plot the results. This function allows comparison with a benchmark.
+
+```{r}
+plot_reconstruction <- function(s, target, period, benchmark = NULL) {
+
+    if (period == 'inst') s <- s[year %in% target$year]
+    p <- ggplot(s) +
+        theme_cowplot() +
+        panel_border('black') +
+        geom_ribbon(aes(year, ymin = Ql, ymax = Qu), alpha = 0.2) +
+        geom_line(aes(year, Q, colour = 'LDS', linetype = 'LDS'), size = 0.4) +
+        labs(x = 'Year', y = 'Annual streamflow, million m\u00B3')
+
+    if (period == 'inst') {
+        p <- p + geom_line(aes(year, Qa, colour = 'Instrumental', linetype = 'Instrumental'),
+                           data = target, size = 0.4)
+
+        if (!is.null(benchmark)) {
+            benchmark <- benchmark[year %in% target$year]
+            p <- p +
+                geom_line(aes(year, Q, colour = 'Benchmark', linetype = 'Benchmark'),
+                          data = benchmark) +
+                scale_colour_manual(name = "Model", values = c('black', 'darkorange', 'black')) +
+                scale_linetype_manual(name = "Model", values = c(2, 1, 1))
+        } else
+            p <- p +
+                scale_colour_manual(name = "Model", values = c('darkorange', 'black')) +
+                scale_linetype_manual(name = "Model", values = c(1, 1))
+
+        p <- p + theme(legend.position = 'top',
+                       legend.title = element_blank())
+    } else {# Full period
+        if (!is.null(benchmark))
+            p <- p + geom_line(aes(year, Q, colour = 'Benchmark', linetype = 'Benchmark'),
+                               data = benchmark) +
+                scale_colour_manual(name = "Model", values = c('blue', 'black')) +
+                scale_linetype_manual(name = "Model", values = c(2, 1)) +
+                theme(legend.position = 'top',
+                      legend.title = element_blank())
+        else
+            p <- p + theme(legend.position = 'none')
+    }
+}
+```
+
 
 ```{r, fig.width=7, fig.height = 7}
 plot_reconstruction(s = lds$rec, target = P1annual, period = 'inst', benchmark = bm$rec)
@@ -163,7 +207,35 @@ set.seed(1000)
 reps <- LDS_rep(lds$theta, u, v, years = lds$rec$year, mu = mean(log(P1annual$Qa)))
 ```
 
-Plot them
+Let's now create a function to plot the replicates.
+
+```{r}
+plot_replicates <- function(reps) {
+
+    # Plot streamflow
+    p <- ggplot(reps) +
+        geom_line(aes(year, simQ, group = rep), colour = 'gray80') +
+        geom_line(aes(year, Q), data = lds$rec, colour = 'black') +
+        labs(x = 'Year',
+             y = 'Annual streamflow, million m\u00B3') +
+        theme_cowplot() +
+        panel_border('black')
+    # Plot catchment state
+    q <- ggplot(reps) +
+        geom_line(aes(year, simX, group = rep), colour = 'gray80') +
+        geom_line(aes(year, X), data = lds$rec, colour = 'black') +
+        labs(x = 'Year',
+             y = 'Flow regime') +
+        theme_cowplot() +
+        panel_border('black')
+
+    plot_grid(p, q, ncol = 1, axis = 'r', align = 'v',
+              labels = c('(a)', '(b)'),
+              label_size = 10)
+}
+```
+
+And let's plot them now.
 
 ```{r, fig.width=7, fig.height=7}
 plot_replicates(reps)
