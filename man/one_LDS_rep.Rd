@@ -10,6 +10,8 @@ one_LDS_rep(rep.num, theta, u = NULL, v = NULL, years, mu = 0,
 \arguments{
 \item{rep.num}{The ID number of the replicate}
 
+\item{theta}{A list of parameters: A, B, C, D, Q, R, x0, v0}
+
 \item{u}{Input matrix for the state equation (m_u rows, T columns)}
 
 \item{v}{Input matrix for the output equation (m_v rows, T columns)}

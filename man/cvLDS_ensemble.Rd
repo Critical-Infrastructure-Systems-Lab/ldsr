@@ -35,15 +35,23 @@ cvLDS_ensemble(Qa, u.list, v.list, start.year, method = "EM",
 will randomize the initial value by sampling uniformly within the range for each parameters
 (A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).}
 
+\item{lambda}{Weight for penalty term (if method is not EM; experimental)}
+
 \item{ub}{Upper bounds, a vector whose length is the number of parameters}
 
 \item{lb}{Lower bounds}
+
+\item{num.islands}{Number of islands (if method is GA; experimental)}
+
+\item{pop.per.island}{Initial population per island (if method is GA; experimental)}
 
 \item{niter}{Maximum number of iterations, default 1000}
 
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.}
 
-\item{parallel}{If TRUE, the computation is done in parallel using all available cores
+\item{parallel}{If TRUE, the computation is done in parallel using all available cores}
+
+\item{all.cores}{If TRUE, all cores are used, otherwise one less core will be used.
 (using the doParallel backend). If FALSE, the computation is done serially.}
 }
 \value{

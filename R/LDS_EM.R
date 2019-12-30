@@ -4,10 +4,10 @@
 #' @inheritParams LDS_EM
 #' @param return.init Indicate whether the initial condition that results in the highest
 #' log-likelihood is returned. Default is TRUE.
-#' @inheritParams LDS_EM_restart
 #' @param niter Maximum number of iterations, default 1000
 #' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
 #' @param parallel If TRUE, the computation is done in parallel using all available cores
+#' @param all.cores If TRUE, all cores are used, otherwise one less core will be used.
 #' (using the doParallel backend). If FALSE, the computation is done serially.
 #' @return a list as produced by [LDS_EM]. If return.init is true, a vector of initial condition is included in the list as well.
 #' @export

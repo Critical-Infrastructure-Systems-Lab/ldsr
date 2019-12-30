@@ -8,6 +8,8 @@ LDS_rep(theta, u = NULL, v = NULL, years, num.reps = 100, mu = 0,
   exp.trans = TRUE)
 }
 \arguments{
+\item{theta}{A list of parameters: A, B, C, D, Q, R, x0, v0}
+
 \item{u}{Input matrix for the state equation (m_u rows, T columns)}
 
 \item{v}{Input matrix for the output equation (m_v rows, T columns)}

@@ -8,9 +8,13 @@ LDS_BFGS(y, u, v, lambda = 1, ub, lb, num.restarts = 100,
   parallel = TRUE)
 }
 \arguments{
+\item{y}{Transformed and standardized streamflow}
+
 \item{u}{Input matrix for the state equation (m_u rows, T columns)}
 
 \item{v}{Input matrix for the output equation (m_v rows, T columns)}
+
+\item{lambda}{Weight for penalty term (if method is not EM; experimental)}
 
 \item{ub}{Upper bounds, a vector whose length is the number of parameters}
 
@@ -20,9 +24,8 @@ LDS_BFGS(y, u, v, lambda = 1, ub, lb, num.restarts = 100,
 will randomize the initial value by sampling uniformly within the range for each parameters
 (A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).}
 
-\item{parallel}{If TRUE, the computation is done in parallel using all available cores
-(using the doParallel backend). If FALSE, the computation is done serially.}
+\item{parallel}{If TRUE, the computation is done in parallel using all available cores}
 }
 \description{
-\strong{Warning} This is an experimental feature and may not work.
+\strong{Warning} This is an experimental feature. Use with care.
 }

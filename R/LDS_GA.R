@@ -43,8 +43,12 @@ penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
     ks.result$lik - lambda * ssq
 }
 
-#' Learn a linear dynamical system using Genetic Algorithm
+#' Learn a linear dynamical system using Genetic Algorithm.
+#'
+#' **Warning** This is an experimental feature. Use with care.
 #' @inheritParams LDS_reconstruction
+#' @param y Transformed and standardized streamflow
+#'
 
 LDS_GA <- function(y, u, v, lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100, niter = 1000, parallel = TRUE) {
 
@@ -78,7 +82,7 @@ LDS_GA <- function(y, u, v, lambda = 1, ub, lb, num.islands = 4, pop.per.island 
 
 #' Learn LDS with L-BFGS-B
 #'
-#' **Warning** This is an experimental feature and may not work.
+#' **Warning** This is an experimental feature. Use with care.
 #' @inheritParams LDS_GA
 #' @inheritParams LDS_reconstruction
 #' @export
@@ -93,8 +97,8 @@ LDS_BFGS <- function(y, u, v, lambda = 1, ub, lb, num.restarts = 100, parallel =
         nbCores <- detectCores() - 1
         cl <- makeCluster(nbCores)
         registerDoParallel(cl)
-        optim.result <- foreach(par = par.list) %dopar%
-            optim(par,
+        optim.result <- foreach(par = par.list, .packages = 'stats') %dopar%
+            stats::optim(par,
                   function(theta) -penalized_likelihood(y, u, v, theta, lambda),
                   method = 'L-BFGS-B',
                   lower = lb,
@@ -102,7 +106,7 @@ LDS_BFGS <- function(y, u, v, lambda = 1, ub, lb, num.restarts = 100, parallel =
         stopCluster(cl)
     } else {
         optim.result <- lapply(par.list, function(par)
-            optim(par,
+            stats::optim(par,
                   function(theta) -penalized_likelihood(y, u, v, theta, lambda),
                   method = 'L-BFGS-B',
                   lower = lb,

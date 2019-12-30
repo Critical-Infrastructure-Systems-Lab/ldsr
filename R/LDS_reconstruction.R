@@ -34,6 +34,9 @@ make_init <- function(init, d, num.restarts) {
 #' @param ub Upper bounds, a vector whose length is the number of parameters
 #' @param lb Lower bounds
 #' @param return.raw If TRUE, state and streamflow estimates without measurement updates will be returned.
+#' @param lambda Weight for penalty term (if method is not EM; experimental)
+#' @param num.islands Number of islands (if method is GA; experimental)
+#' @param pop.per.island Initial population per island (if method is GA; experimental)
 #' @return A list of the following elements
 #' * rec: reconstruction results, a data.table with the following columns
 #'     - year: calculated from Qa and the length of u
@@ -243,7 +246,6 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
 #' @param k Numer of data points to be left out in each cross validation-run.
 #' @param CV.reps Number of cross-validation runs.
 #' @param Z A list of CV.reps elements, each is a vector of length k. See Details.
-#' @param metrics.space Whether performance metrics are calculated in the 'original' or 'transformed' space, or 'both'.
 #' @details Allows different experimental setups:
 #'   * init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts.
 #'   * Z: If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created.

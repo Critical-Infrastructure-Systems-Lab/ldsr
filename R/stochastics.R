@@ -2,6 +2,7 @@
 #'
 #' Generate a single stochastic time series from an LDS model
 #' @param rep.num The ID number of the replicate
+#' @param theta A list of parameters: A, B, C, D, Q, R, x0, v0
 #' @inheritParams LDS_EM
 #' @param mu Mean of the log-transformed streamflow process
 #' @param years The years of the study horizon

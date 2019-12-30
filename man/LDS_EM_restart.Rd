@@ -23,7 +23,9 @@ LDS_EM_restart(y, u, v, init, niter = 1000, tol = 1e-05,
 \item{return.init}{Indicate whether the initial condition that results in the highest
 log-likelihood is returned. Default is TRUE.}
 
-\item{parallel}{If TRUE, the computation is done in parallel using all available cores
+\item{parallel}{If TRUE, the computation is done in parallel using all available cores}
+
+\item{all.cores}{If TRUE, all cores are used, otherwise one less core will be used.
 (using the doParallel backend). If FALSE, the computation is done serially.}
 }
 \value{
