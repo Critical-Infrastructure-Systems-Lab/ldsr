@@ -179,6 +179,9 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
                          niter = 1000, tol = 1e-5, return.raw = FALSE,
                          parallel = TRUE, all.cores = FALSE) {
 
+  # Non-standard call issue in R CMD check
+  i <- member <- Q <- X <- NULL
+
   Qa <- as.data.table(Qa)
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
@@ -206,15 +209,13 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
                             SIMPLIFY = FALSE)
   }
 
-  ensemble <- ensemble.full %>%
-    lapply( '[[', 'rec') %>%
-    rbindlist() %>%
-    .[, member := 1:.N, by = year]
+  ensemble <- rbindlist(lapply(ensemble.full, '[[', 'rec'))
+  ensemble[, member := 1:.N, by = year]
 
-  rec <- ensemble[, .(Q = mean(Q)), by = year]
-  Xstd <- ensemble[, .(year, X = X / sd(X)), by = member
-              ][, .(X = mean(X)), by = year
-              ][, X]
+  rec <- ensemble[, list(Q = mean(Q)), by = year]
+  Xstd <- ensemble[, list(year, X = X / sd(X)), by = member
+                 ][, list(X = mean(X)), by = year
+                 ][, X]
   rec[, X := Xstd]
 
   ans <- list(rec = rec[],
@@ -222,14 +223,12 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
               theta = lapply(ensemble.full, '[[', 'theta'))
 
   if (return.raw) {
-    ensemble.raw <- ensemble.full %>%
-      lapply( '[[', 'rec2') %>%
-      rbindlist() %>%
-      .[, member := 1:.N, by = year]
+    ensemble.raw <- rbindlist(lapply(ensemble.full, '[[', 'rec2'))
+    ensemble.raw[, member := 1:.N, by = year]
 
-    rec.raw <- ensemble.raw[, .(Q = mean(Q)), by = year]
-    Xstd.raw <- ensemble.raw[, .(year, X = X / sd(X)), by = member
-                           ][, .(X = mean(X)), by = year
+    rec.raw <- ensemble.raw[, list(Q = mean(Q)), by = year]
+    Xstd.raw <- ensemble.raw[, list(year, X = X / sd(X)), by = member
+                           ][, list(X = mean(X)), by = year
                            ][, X]
     rec.raw[, X := Xstd.raw]
 
@@ -256,6 +255,9 @@ cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
                   lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
                   niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
 
+  # Non-standard call issue in R CMD check
+  Q <- omit <- NULL
+
   Qa <- as.data.table(Qa)
   obs.ind <- which(!is.na(Qa$Qa))
   n.obs <- length(obs.ind)
@@ -273,7 +275,7 @@ cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
                      lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
 
     # Don't change Qa so that we can still calculate metrics later
-    Qa2 <- copy(Qa) %>% .[omit, Qa := NA]
+    Qa2 <- copy(Qa)[omit, Qa := NA]
     # Parallel is run at the outer loop, i.e. for each cross-validation run
     ans <- LDS_reconstruction(Qa2, u, v, start.year, method, trans, init, num.restarts, return.init = FALSE,
                               lambda, ub, lb, num.islands, pop.per.island, niter, tol,
@@ -323,6 +325,9 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans 
                            lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
                            niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
 
+  # Non-standard call issue in R CMD check
+  Q <- omit <- NULL
+
   Qa <- as.data.table(Qa)
   if (length(u.list) != length(v.list))
     stop("Length of u and v lists must be the same.")
@@ -343,7 +348,7 @@ cvLDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans 
                               lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
 
     # Don't change Qa so that we can still calculate metrics later
-    Qa2 <- copy(Qa) %>% .[omit, Qa := NA]
+    Qa2 <- copy(Qa)[omit, Qa := NA]
     # Parallel is run at the outer loop, i.e. for each cross-validation run
     ans <- LDS_ensemble(Qa2, u.list, v.list, start.year, method, trans, init, num.restarts,
                         lambda, ub, lb, num.islands, pop.per.island, niter, tol,

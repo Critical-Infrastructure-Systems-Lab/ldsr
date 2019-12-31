@@ -93,6 +93,8 @@ LDS_BFGS <- function(y, u, v, lambda = 1, ub, lb, num.restarts = 100, parallel =
     par.list <- replicate(num.restarts,
                           runif(d + d + 5, min = lb, max = ub),
                           simplify = FALSE)
+    # Non-standard call issue in R CMD check
+    par <- NULL
     if (parallel) {
         nbCores <- detectCores() - 1
         cl <- makeCluster(nbCores)

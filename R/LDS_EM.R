@@ -15,6 +15,7 @@ LDS_EM_restart <- function(y, u, v, init,
                            niter = 1000, tol = 1e-5, return.init = TRUE,
                            parallel = FALSE, all.cores = FALSE) {
 
+    init.val <- NULL
     if (parallel) {
         nbCores <- detectCores() - { if (all.cores) 0 else 1 }
         cl <- makeCluster(nbCores)

@@ -56,7 +56,7 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
   colnames(rec) <- c('Q', 'Ql', 'Qu')
   rec$year <- years
 
-  df2 <- df[, ..selected]
+  df2 <- df[, selected, with = FALSE]
   df2$Qa <- df$Qa
 
   # Cross validation ------------------------------------------------------------
@@ -100,6 +100,9 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
 #' @param pc.list A list, each element is a set of principal component as in `PCR_reconstruction`'s `pc`
 #' @export
 PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
+
+  # Non-standard call issue in R CMD check
+  Q <- NULL
 
   # Function to calculate cross validation metrics
   oneCV <- function(z, df) {
@@ -147,11 +150,11 @@ PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
     list(rec = rec,
          coeffs = fit$coefficients,
          sigma = summary(fit)$sigma,
-         selectedPC = df[, ..outCols])
+         selectedPC = df[, outCols, with = FALSE])
 
   })
 
-  rec <- lapply(ensemble, '[[', 'rec') %>% rbindlist() %>% .[, .(Qa = mean(Q)), by = year]
+  rec <- rbindlist(lapply(ensemble, '[[', 'rec'))[, list(Qa = mean(Q)), by = year]
 
   # Cross validation ------------------------------------------------------------
   N <- Qa[!is.na(Qa), .N]
