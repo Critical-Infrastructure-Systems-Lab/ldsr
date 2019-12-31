@@ -4,8 +4,7 @@
 \alias{LDS_BFGS}
 \title{Learn LDS with L-BFGS-B}
 \usage{
-LDS_BFGS(y, u, v, lambda = 1, ub, lb, num.restarts = 100,
-  parallel = TRUE)
+LDS_BFGS(y, u, v, lambda = 1, ub, lb, num.restarts = 100, parallel = TRUE)
 }
 \arguments{
 \item{y}{Transformed and standardized streamflow}

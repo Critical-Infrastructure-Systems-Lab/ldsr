@@ -4,8 +4,15 @@
 \alias{one_LDS_rep}
 \title{One LDS replicate}
 \usage{
-one_LDS_rep(rep.num, theta, u = NULL, v = NULL, years, mu = 0,
-  exp.trans = TRUE)
+one_LDS_rep(
+  rep.num,
+  theta,
+  u = NULL,
+  v = NULL,
+  years,
+  mu = 0,
+  exp.trans = TRUE
+)
 }
 \arguments{
 \item{rep.num}{The ID number of the replicate}

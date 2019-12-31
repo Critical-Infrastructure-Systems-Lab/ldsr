@@ -42,10 +42,11 @@ In this vignette, we will demonstrate the package using a case study that was pu
 **Some preparations:**
 We call some necessary packages
 
-```{r, eval=FALSE}
+```{r, message=FALSE, warning=FALSE}
 library(ldsr)  # This package
 library(data.table) # The package leverages the efficient `data.table` so we will use it in this vignette.
 library(ggplot2) # Plotting
+library(cowplot) # Plotting
 ```
 
 # Benchmark

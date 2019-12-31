@@ -4,8 +4,15 @@
 \alias{LDS_rep}
 \title{Multiple LDS replicates}
 \usage{
-LDS_rep(theta, u = NULL, v = NULL, years, num.reps = 100, mu = 0,
-  exp.trans = TRUE)
+LDS_rep(
+  theta,
+  u = NULL,
+  v = NULL,
+  years,
+  num.reps = 100,
+  mu = 0,
+  exp.trans = TRUE
+)
 }
 \arguments{
 \item{theta}{A list of parameters: A, B, C, D, Q, R, x0, v0}

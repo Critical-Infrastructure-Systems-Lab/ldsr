@@ -4,11 +4,28 @@
 \alias{cvLDS_ensemble}
 \title{Cross validatdion for ensemble reconstruction. This is a wrapper for \link{cvLDS}.}
 \usage{
-cvLDS_ensemble(Qa, u.list, v.list, start.year, method = "EM",
-  trans = "log", k, CV.reps = 100, Z = NULL, init = NULL,
-  num.restarts = 100, lambda = 1, ub, lb, num.islands = 4,
-  pop.per.island = 100, niter = 1000, tol = 1e-05, parallel = TRUE,
-  all.cores = FALSE)
+cvLDS_ensemble(
+  Qa,
+  u.list,
+  v.list,
+  start.year,
+  method = "EM",
+  trans = "log",
+  k,
+  CV.reps = 100,
+  Z = NULL,
+  init = NULL,
+  num.restarts = 100,
+  lambda = 1,
+  ub,
+  lb,
+  num.islands = 4,
+  pop.per.island = 100,
+  niter = 1000,
+  tol = 1e-05,
+  parallel = TRUE,
+  all.cores = FALSE
+)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}

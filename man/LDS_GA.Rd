@@ -4,8 +4,18 @@
 \alias{LDS_GA}
 \title{Learn a linear dynamical system using Genetic Algorithm.}
 \usage{
-LDS_GA(y, u, v, lambda = 1, ub, lb, num.islands = 4,
-  pop.per.island = 100, niter = 1000, parallel = TRUE)
+LDS_GA(
+  y,
+  u,
+  v,
+  lambda = 1,
+  ub,
+  lb,
+  num.islands = 4,
+  pop.per.island = 100,
+  niter = 1000,
+  parallel = TRUE
+)
 }
 \arguments{
 \item{y}{Transformed and standardized streamflow}

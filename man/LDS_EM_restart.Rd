@@ -4,8 +4,17 @@
 \alias{LDS_EM_restart}
 \title{Learn LDS model with multiple initial conditions}
 \usage{
-LDS_EM_restart(y, u, v, init, niter = 1000, tol = 1e-05,
-  return.init = TRUE, parallel = FALSE, all.cores = FALSE)
+LDS_EM_restart(
+  y,
+  u,
+  v,
+  init,
+  niter = 1000,
+  tol = 1e-05,
+  return.init = TRUE,
+  parallel = FALSE,
+  all.cores = FALSE
+)
 }
 \arguments{
 \item{y}{Observation matrix (may need to be normalized and centered before hand) (q rows, T columns)}

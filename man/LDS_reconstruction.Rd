@@ -4,11 +4,27 @@
 \alias{LDS_reconstruction}
 \title{Learn LDS model with multiple initial conditions. This function can be called directly or wrapped in \link{LDS_ensemble}}
 \usage{
-LDS_reconstruction(Qa, u, v, start.year, method = "EM", trans = "log",
-  init = NULL, num.restarts = 100, return.init = TRUE, lambda = 1,
-  ub, lb, num.islands = 4, pop.per.island = 250, niter = 1000,
-  tol = 1e-05, return.raw = FALSE, parallel = TRUE,
-  all.cores = FALSE)
+LDS_reconstruction(
+  Qa,
+  u,
+  v,
+  start.year,
+  method = "EM",
+  trans = "log",
+  init = NULL,
+  num.restarts = 100,
+  return.init = TRUE,
+  lambda = 1,
+  ub,
+  lb,
+  num.islands = 4,
+  pop.per.island = 250,
+  niter = 1000,
+  tol = 1e-05,
+  return.raw = FALSE,
+  parallel = TRUE,
+  all.cores = FALSE
+)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
@@ -60,9 +76,9 @@ A list of the following elements
 \itemize{
 \item year: calculated from Qa and the length of u
 \item X: the estimated hidden state
-\item Xl, Xu: lower and upper range for the 95\% confidence interval of X
+\item Xl, Xu: lower and upper range for the 95\\% confidence interval of X
 \item Q: the reconstructed streamflow
-\item Ql, Qu: lower and upper range for the 95\% confidence interval of Q
+\item Ql, Qu: lower and upper range for the 95\\% confidence interval of Q
 }
 \item theta: model parameters
 \item lik: maximum likelihood
