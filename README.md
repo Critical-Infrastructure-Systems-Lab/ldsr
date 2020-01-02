@@ -1,7 +1,7 @@
 <!-- badges: start -->
 [![Travis build status](https://travis-ci.org/ntthung/ldsr.svg?branch=master)](https://travis-ci.org/ntthung/ldsr)
 [![GPL license](https://img.shields.io/badge/License-GPL-blue.svg)](http://perso.crans.org/besson/LICENSE.html)
-[![GitHub version](https://badge.fury.io/gh/Naereen%2FStrapDown.js.svg)](https://github.com/Naereen/StrapDown.js)
+[![GitHub version](https://badge.fury.io/gh/ntthung%2Fldsr.svg)](https://badge.fury.io/gh/ntthung%2Fldsr)
 <!-- badges: end -->
 
 
