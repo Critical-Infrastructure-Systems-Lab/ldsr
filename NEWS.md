@@ -1,5 +1,10 @@
 # Change log
 
+**Version 0.0.1**
+
+* First submission to CRAN.
+* Remove plotting functions. Users can create their own plots using examples in the vignette.
+
 **Version 0.0.0.9003**
 
 * Added ensemble model function
