@@ -2,3 +2,5 @@
 
 language: R
 cache: packages
+script:
+    Sys.setenv("PKG_LIBS" = "-llapack")
