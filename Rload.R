@@ -1,1 +1,1 @@
-Sys.setenv("PKG_LIBS" = "-llapack")
+Sys.setenv("PKG_LIBS" = "-llibflame")
