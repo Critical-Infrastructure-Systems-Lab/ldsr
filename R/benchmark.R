@@ -99,7 +99,7 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
 #' @inheritParams PCR_reconstruction
 #' @param pc.list A list, each element is a set of principal component as in `PCR_reconstruction`'s `pc`
 #' @export
-PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
+PCR_ensemble <- function(Qa, pc.list, stepwise = TRUE, k, CV.reps = 100, Z = NULL) {
 
   # Non-standard call issue in R CMD check
   Q <- NULL
@@ -109,7 +109,7 @@ PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
     # Leave-k-out cross validation with the indices of the k data points to be left out supplied in z
     # Returns a vector of performance metrics
 
-    fit <- lm(log(Qa) ~ . , data = df, subset = setdiff(1:N, z))
+    fit <- lm(Qa ~ . , data = df, subset = setdiff(1:N, z))
     Qa.hat <- exp(predict(fit, newdata = df))
     return(list(metric = calculate_metrics(Qa.hat, df$Qa, z), Ycv = Qa.hat))
   }
@@ -124,23 +124,36 @@ PCR_ensemble <- function(Qa, pc.list, k, CV.reps = 100, Z = NULL) {
     df <- merge(pc, Qa, by = 'year')
     df$year <- NULL
     pc$year <- NULL
+    if (trans == 'log') {
+      df[, Qa := log(Qa)]
+    } else if (trans == 'boxcox') {
+      lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam %>% 'names<-'('lambda')
+      df[, Qa := car::bcPower(Qa, lambda)]
+    } else {
+      stop('Accepted transformations are "log", "boxcox" and "none"')
+    }
 
     # Model fitting
-    fit <- tryCatch(
-      step(lm(log(Qa) ~ . , data = df), direction = 'backward', trace = 0),
-      error = function(e) {
-        if (substr(e$message, 1, 16) == 'AIC is -infinity') {
-          warning('Backward selection finds AIC = -Infinity, only PC1 is used.')
-          lm(log(Qa) ~ PC1 , data = df)
+    if (stepwise) {
+      fit <- tryCatch(
+        step(lm(Qa ~ . , data = df), direction = 'backward', trace = 0),
+        error = function(e) {
+          if (substr(e$message, 1, 16) == 'AIC is -infinity') {
+            warning('Backward selection finds AIC = -Infinity, only PC1 is used.')
+            lm(log(Qa) ~ PC1 , data = df)
+          }
         }
-      }
-    )
+      )
 
-    selected <- names(fit$model)[-1]   # First element is intercept
-    if (length(selected) == 0) {
-      warning('Backward selection returned empty model; model selection is skipped.')
-      fit <- lm(log(Qa) ~ . , data = df)
       selected <- names(fit$model)[-1]   # First element is intercept
+      if (length(selected) == 0) {
+        warning('Backward selection returned empty model; model selection is skipped.')
+        fit <- lm(Qa ~ . , data = df)
+        selected <- names(fit$model)[-1]   # First element is intercept
+      }
+    } else {
+      fit <- lm(Qa ~ . , data = df)
+      selected <- names(fit$model)[-1]
     }
     rec <- data.table(exp(predict(fit, newdata = pc, interval = 'confidence')))
     colnames(rec) <- c('Q', 'Ql', 'Qu')
