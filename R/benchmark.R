@@ -99,7 +99,7 @@ PCR_reconstruction <- function(Qa, pc, k, CV.reps = 100, Z = NULL) {
 #' @inheritParams PCR_reconstruction
 #' @param pc.list A list, each element is a set of principal component as in `PCR_reconstruction`'s `pc`
 #' @export
-PCR_ensemble <- function(Qa, pc.list, stepwise = TRUE, k, CV.reps = 100, Z = NULL) {
+PCR_ensemble <- function(Qa, pc.list, stepwise = TRUE, trans = 'log', k, CV.reps = 100, Z = NULL) {
 
   # Non-standard call issue in R CMD check
   Q <- NULL
