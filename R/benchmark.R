@@ -40,8 +40,8 @@ PCR_reconstruction <- function(Qa, pc, stepwise = TRUE, trans = 'log', k, CV.rep
   } else if (trans == 'boxcox') {
     lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam %>% 'names<-'('lambda')
     df[, Qa := car::bcPower(Qa, lambda)]
-  } else {
-    stop('Accepted transformations are "log", "boxcox" and "none"')
+  } else { # Has to be 'none' here
+    if (trans != 'none') stop('Accepted transformations are "log", "boxcox" and "none".')
   }
 
   # Model fitting
@@ -145,7 +145,7 @@ PCR_ensemble <- function(Qa, pc.list, stepwise = TRUE, trans = 'log', k, CV.reps
       lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam %>% 'names<-'('lambda')
       df[, Qa := car::bcPower(Qa, lambda)]
     } else {
-      stop('Accepted transformations are "log", "boxcox" and "none"')
+      if (trans != 'none') stop('Accepted transformations are "log", "boxcox" and "none".')
     }
 
     # Model fitting
