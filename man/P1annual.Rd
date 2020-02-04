@@ -10,7 +10,7 @@
 \item{Qa}{annual streamflow in million cubic meters per month}
 }}
 \source{
-\url{https://www.hydro-1.net/08HYDRO/HD-04/4-06.html}
+\url{https://www.hydro-1.net/}
 }
 \usage{
 P1annual

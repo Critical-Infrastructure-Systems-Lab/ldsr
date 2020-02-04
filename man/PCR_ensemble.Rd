@@ -4,7 +4,7 @@
 \alias{PCR_ensemble}
 \title{Same as \code{PCR} but using ensemble model}
 \usage{
-PCR_ensemble(Qa, pc.list, k, CV.reps = 100, Z = NULL)
+PCR_ensemble(Qa, pc.list, stepwise = TRUE, k, CV.reps = 100, Z = NULL)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
