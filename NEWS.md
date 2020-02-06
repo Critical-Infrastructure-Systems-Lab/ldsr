@@ -4,6 +4,7 @@
 
 * First submission to CRAN.
 * Remove plotting functions. Users can create their own plots using examples in the vignette.
+* Make the API of PCR and LDS reconstructions consistent.
 
 **Version 0.0.0.9003**
 
