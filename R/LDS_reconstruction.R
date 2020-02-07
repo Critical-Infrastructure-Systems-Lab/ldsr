@@ -169,7 +169,7 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', trans = 'log
 #' Ensemble reconstruction. This is a wrapper for [LDS_reconstruction].
 #'
 #' @param u.list List of u matrices
-#' @param v.list List of v matrices#'
+#' @param v.list List of v matrices
 #' @inheritParams LDS_reconstruction
 #' @return A list of models in the ensemble
 #' @export
