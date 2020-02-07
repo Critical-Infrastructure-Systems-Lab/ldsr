@@ -49,6 +49,12 @@ library(ggplot2) # Plotting
 library(cowplot) # Plotting
 ```
 
+We also set the plot theme.
+
+```{r}
+theme_set(theme_cowplot())
+```
+
 # Benchmark
 
 First we create a benchmark reconstruction using Principal Component Regression.
@@ -58,7 +64,7 @@ First we create a benchmark reconstruction using Principal Component Regression.
 set.seed(123)
 Z <- replicate(100, sample(1:85, 9), simplify = F)
 # Build and cross-validate a PCR model
-bm <- PCR_reconstruction(P1annual, P1pc, Z = Z)
+bm <- PCR_reconstruction(P1annual, P1pc, start.year = 1600)
 ```
 
 The following principal components were selected by the backward stepwise process
@@ -90,7 +96,7 @@ Since EM is a local search routine, we run it with multiple restarts, each of wh
 
 ```{r, eval=FALSE}
 set.seed(100)
-lds <- LDS_reconstruction(P1annual, u, v, num.restarts = 1000)
+lds <- LDS_reconstruction(P1annual, u, v, start.year = 1600, num.restarts = 100)
 ```
 
 ```{r, include=FALSE}
@@ -108,7 +114,7 @@ lds$init
 This cross-validation procedure takes a couple of hours on a quad-core 3.4 GHz desktop. The package has built-in parallel computing capability, so run it on on a cluster to reduce running time. Alternatively, you can also reduce the number of restarts. In this example, setting `num.restart = 10` will not cause a big loss in performance.
 
 ```{r, eval=FALSE}
-cv <- cvLDS(P1annual, u, v, Z = Z, num.restarts = 1000)
+cv <- cvLDS(P1annual, u, v, start.year = 1600, Z = Z, num.restarts = 100)
 ```
 
 ```{r, include=FALSE}
@@ -118,7 +124,8 @@ cv <- ldsr:::P1cv
 Let's compare the performance metrics
 
 ```{r, fig.width=5, fig.height=5}
-dt1 <- bm$metrics.dist
+bmcv <- cvPCR(P1annual, pc, start.year = 1600, Z = Z)
+dt1 <- bmcv$metrics.dist
 dt1[, model := 'Linear regression']
 dt2 <- cv$metrics.dist
 dt2[, model := 'LDS']
@@ -149,8 +156,6 @@ plot_reconstruction <- function(s, target, period, benchmark = NULL) {
 
     if (period == 'inst') s <- s[year %in% target$year]
     p <- ggplot(s) +
-        theme_cowplot() +
-        panel_border('black') +
         geom_ribbon(aes(year, ymin = Ql, ymax = Qu), alpha = 0.2) +
         geom_line(aes(year, Q, colour = 'LDS', linetype = 'LDS'), size = 0.4) +
         labs(x = 'Year', y = 'Annual streamflow, million m\u00B3')
@@ -184,11 +189,18 @@ plot_reconstruction <- function(s, target, period, benchmark = NULL) {
         else
             p <- p + theme(legend.position = 'none')
     }
+    q <- ggplot(s) +
+      geom_hline(yintercept = 0) +
+      geom_line(aes(year, X), colour = 'black') +
+      geom_ribbon(aes(year, ymin = Xl, ymax = Xu), alpha = 0.2) +
+      labs(x = 'Year', y = 'Catchment state X [-]')
+    
+    plot_grid(p, q, ncol = 1, align = 'v', rel_heights = c(1.5, 1))
 }
 ```
 
 
-```{r, fig.width=7, fig.height = 7}
+```{r, fig.width=7, fig.height=6}
 plot_reconstruction(s = lds$rec, target = P1annual, period = 'inst', benchmark = bm$rec)
 ```
 
