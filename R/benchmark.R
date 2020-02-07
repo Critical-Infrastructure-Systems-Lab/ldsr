@@ -180,6 +180,7 @@ PCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log', stepwise = TRUE
 #' * metrics.dist: distribution of performance metrics across all cross-validation runs.
 #' * Ycv: the predicted streamflow in each cross validation run
 #' * Z: the cros
+#' @export
 cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
                            k, CV.reps = 100, Z = NULL) {
 

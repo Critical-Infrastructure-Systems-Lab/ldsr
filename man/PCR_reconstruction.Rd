@@ -4,31 +4,27 @@
 \alias{PCR_reconstruction}
 \title{Reconstruction with Principal Component Regression}
 \usage{
-PCR_reconstruction(Qa, pc, k, CV.reps = 100, Z = NULL)
+PCR_reconstruction(Qa, pc, start.year, trans = "log", stepwise = TRUE)
 }
 \arguments{
 \item{Qa}{Observations: a data.table of annual streamflow with at least two columns: year and Qa.}
 
-\item{pc}{A data frame of principal components with first column called years (the years in) the
-study period, followed by one column for each principal components.}
+\item{pc}{A data frame, one colulmn for each principal component}
 
-\item{k}{Numer of data points to be left out in each cross validation-run.}
+\item{start.year}{Starting year of \code{pc}, i.e, the first year of the paleo period. \code{start.year + nrow(pc) - 1} will determine the last year of the study horizon, which must be greater than or equal to the last year in \code{Qa}.}
 
-\item{CV.reps}{Number of cross-validation runs.}
+\item{trans}{Transformatin of flow before model fitting, can be either "log", "boxcox" or "none".}
 
-\item{Z}{A list of CV.reps elements, each is a vector of length k. See Details.}
+\item{stepwise}{If \code{TRUE}, backward stepwise selection will be performed. Otherwise, all PCs will be used.}
 }
 \value{
-A list of reconstruction and cross-validation results
+A list of reconstruction results
 \itemize{
 \item rec: reconstruction
-\item metrics: performance metrics
-\item metrics.dist: distribution of performance metrics across all cross-validation runs.
-\item Ycv: the predicted streamflow in each cross validation run
-\item Z: the cross-validation points
+\item selected: a vector of selected principal components
 }
 }
 \description{
-Reconstruct streamflow using the given principal components and backward selection.
+Reconstruct streamflow using the given principal compone11nts and backward selection.
 Since this is the benchmark for the LDS model, and for simplicity, learning and cross-validation are performed in one go, instead of with two separate functions as in the case of LDS.
 }

@@ -30,7 +30,7 @@ LDS_ensemble(
 
 \item{u.list}{List of u matrices}
 
-\item{v.list}{List of v matrices#'}
+\item{v.list}{List of v matrices}
 
 \item{start.year}{Starting year of the paleo period. \code{start.year + ncol(u) - 1} will determine the last year of the study horizon, which must be greater than or equal to the last year in \code{Qa}.}
 
