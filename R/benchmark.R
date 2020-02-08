@@ -193,7 +193,9 @@ cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
     # Leave-k-out cross validation with the indices of the k data points to be left out supplied in z
     # Returns a vector of performance metrics
     instYears <- Qa$year
-    recResults <- PCR_ensemble(Qa, pc.list, start.year, trans, stepwise = FALSE)
+    Qa2 <- copy(Qa)
+    Qa2[z, Qa := NA]
+    recResults <- PCR_ensemble(Qa2, pc.list, start.year, trans, stepwise = FALSE)
     rec <- recResults$rec[year %in% instYears, Qa]
 
     list(metric = calculate_metrics(rec, Qa$Qa, z),
