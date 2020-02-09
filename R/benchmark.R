@@ -203,7 +203,8 @@ cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
   }
 
   # Cross validation ------------------------------------------------------------
-  nObs <- Qa[!is.na(Qa), .N]
+  obsInd <- which(!is.na(Qa))
+  nObs <- length(obsInd)
 
   if (missing(k)) k <- ceiling(nObs/10) # Default 10%
 
@@ -215,7 +216,7 @@ cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
   cv_res <- if (k > 1) { # Leave-k-out, k > 1
     lapply(Z, cv, Qa = Qa, pc.list = pc.list)
   } else { # Leave-one-out
-    lapply(1:n, cv, Qa = Qa, pc.list = pc.list)
+    lapply(obsInd, cv, Qa = Qa, pc.list = pc.list)
   }
   metrics.dist <- rbindlist(lapply(cv_res, '[[', 'metric'))
   Ycv <- as.data.table(sapply(cv_res, '[[', 'Ycv'))
