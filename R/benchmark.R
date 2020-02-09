@@ -39,7 +39,7 @@ PCR_reconstruction <- function(Qa, pc, start.year, trans = 'log', stepwise = TRU
   # Model fitting
   if (stepwise) {
     fit <- tryCatch(
-      step(lm(y ~ . , data = df), direction = 'backward', trace = 0),
+      step(lm(y ~ . , data = df, na.action = na.omit), direction = 'backward', trace = 0),
       error = function(e) {
         if (substr(e$message, 1, 16) == 'AIC is -infinity') {
           warning('Backward selection finds AIC = -Infinity, only PC1 is used.')
@@ -50,11 +50,11 @@ PCR_reconstruction <- function(Qa, pc, start.year, trans = 'log', stepwise = TRU
     selected <- names(fit$model)[-1]   # First element is intercept
     if (length(selected) == 0) {
       warning('Backward selection returned empty model; model selection is skipped.')
-      fit <- lm(y ~ . , data = df)
+      fit <- lm(y ~ . , data = df, na.action = na.omit)
       selected <- names(fit$model)[-1]   # First element is intercept
     }
   } else {
-    fit <- lm(y ~ . , data = df)
+    fit <- lm(y ~ . , data = df, na.action = na.omit)
     selected <- names(fit$model)[-1]
   }
 
@@ -186,7 +186,6 @@ cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
 
   # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
-
 
   # Function to calculate cross validation metricsO
   cv <- function(z, Qa, pc.list) {
