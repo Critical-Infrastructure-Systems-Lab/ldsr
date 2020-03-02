@@ -2,22 +2,16 @@
 #'
 #' If init is a vector, make it a list
 #' If init is NULL, randomize it
-#' @param init The init provided by the caller, can be NULL
 #' @param d Dimension of input
 #' @param num.restarts Number of randomized initial conditions
 #' @return A list of iniial conditions
-make_init <- function(init, d, num.restarts) {
+make_init <- function(d, num.restarts) {
 
-  if (is.null(init)) {
-    replicate(num.restarts,
-              runif(1 + d + 1 + d,
-                    min = c(0, rep(-1, d), 0, rep(-1, d)),
-                    max = c(1, rep( 1, d), 1, rep( 1, d))),
-              simplify = F)
-  } else {
-    # learnLDS expects init is a list
-    if (!is.list(init)) list(init) else init
-  }
+  replicate(num.restarts,
+            runif(d + d + 6,
+                  min = c(0, rep(-1, d), 0, rep(-1, d), 0.01, 0.01, -1, 0.01),
+                  max = rep(1, d + d + 6)),
+            simplify = F)
 }
 
 #' Learn LDS model with multiple initial conditions. This function can be called directly or wrapped in [LDS_ensemble]
@@ -50,7 +44,7 @@ make_init <- function(init, d, num.restarts) {
 #' @export
 LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
                                init = NULL, num.restarts = 100, return.init = TRUE,
-                               lambda = 1, ub, lb, num.islands = 4, pop.per.island = 250,
+                               lambda = 1, ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
                                niter = 1000, tol = 1e-5, return.raw = FALSE,
                                parallel = TRUE, all.cores = FALSE) {
 
@@ -80,60 +74,39 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', trans = 'log
            Q.trans - mu,     # Instrumental period
            rep(NA, end.year - Qa[.N, year])))
 
-  results <-
-    switch(method,
-           EM = {
-             init <- make_init(init, nrow(u), num.restarts)
-             # To avoid unnecessary overhead, only run in parallel mode if the init list is long enough
-             if (parallel && length(init) > 10) {
-               LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = TRUE, all.cores = all.cores)
-             } else {
-               if (parallel)
-                 warning('Initial condition list is short, LDS_EM_restart() is run in sequential mode.')
-               LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel = FALSE)
-             }
-           },
-           GA = {
-             if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
-             LDS_GA(y, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel)
-           },
-           BFGS = {
-             if (missing(ub) || missing(lb)) stop("Upper and lower bounds must be provided.")
-             LDS_BFGS(y, u, v, lambda, ub, lb, num.restarts, parallel)
-           },
-           {
-             stop("Method undefined. It has to be either EM, GA or BFGS.")
-           }
-    )
+  if (is.null(init)) {
+    init <- make_init(nrow(u), num.restarts)
+  } else if (!is.list(init)) init <- list(init)
+  results <- switch(method,
+                    EM = LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel, all.cores),
+                    GA = LDS_GA(y, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel),
+                    BFGS = LDS_BFGS(y, u, v, ub, lb, num.restarts, parallel),
+                    BFGS_smooth = {
+                      fit1 <- LDS_BFGS(y, u, v, ub, lb, num.restarts = 1000)
+                      fit2 <- ldsr:::Kalman_smoother(y, u, v, fit1$theta)
+                      fit1$fit <- fit2
+                      fit1$lik <- fit2$lik
+                      fit1
+                    },
+                    stop("Method undefined. It has to be either EM, GA or BFGS."))
 
   tidy_rec <- function(X, V, Y, theta, trans, years) {
-    CI.X <- 1.96*sqrt(V)
-    Xl <- X - CI.X # Lower range for X
-    Xu <- X + CI.X # Upper range for X
-
+    # Confidence intervals
+    CI.X <- 1.96 * sqrt(V)
     CI.Y <- 1.96 * (as.vector(theta$C) * V * as.vector(theta$C) + as.vector(theta$R))
-    Yl <- Y - CI.Y # Lower range for Y
-    Yu <- Y + CI.Y # Upper range for Y
 
-    # Transform Y to Q and put in a data.table
-    X.out <- data.table(year = years, X, Xl, Xu)
-    Q.out <- switch(trans,
-                    log = data.table(Q = exp(Y),
-                                     Ql = exp(Yl),
-                                     Qu = exp(Yu)),
-                    boxcox = if (lambda == 0)
-                      data.table(Q = exp(Y),
-                                 Ql = exp(Yl),
-                                 Qu = exp(Yu))
-                    else
-                      data.table(Q = (Y*lambda + 1)^(1/lambda),
-                                 Ql = (Yl*lambda + 1)^(1/lambda),
-                                 Qu = (Yu*lambda + 1)^(1/lambda)),
-                    # no transformation
-                    data.table(Q = Y,
-                               Ql = Yl,
-                               Qu = Yu)
-    )
+    X.out <- data.table(year = years,
+                        X = X,
+                        Xl = X - CI.X,
+                        Xu = X + CI.X)
+    Q.out <- data.table(Q = Y,
+                        Ql = Y - CI.Y,
+                        Qu = Y + CI.Y)
+    if (trans == 'log') {
+      Q.out <- exp(Q.out)
+    } else if (trans == 'boxcox') {
+        if (lambda == 0) Q.out <- exp(Q.out) else Q.out <- (Q.out*lambda + 1)^(1/lambda)
+    }
     cbind(X.out, Q.out)
   }
   # Construct 95% confidence intervals and return
@@ -249,10 +222,10 @@ LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 
 #'   * init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts.
 #'   * Z: If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created.
 #' @export
-cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
+ cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
                   k, CV.reps = 100, Z = NULL,
                   init = NULL, num.restarts = 100,
-                  lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
+                  lambda = 1, ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100,
                   niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
 
   # Non-standard call issue in R CMD check

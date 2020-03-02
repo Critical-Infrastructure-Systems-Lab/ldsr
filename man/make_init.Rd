@@ -4,11 +4,9 @@
 \alias{make_init}
 \title{Make a list of initial parameter values for the search}
 \usage{
-make_init(init, d, num.restarts)
+make_init(d, num.restarts)
 }
 \arguments{
-\item{init}{The init provided by the caller, can be NULL}
-
 \item{d}{Dimension of input}
 
 \item{num.restarts}{Number of randomized initial conditions}
