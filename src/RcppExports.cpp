@@ -51,11 +51,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// propagate
+List propagate(List theta, arma::mat u, arma::mat v, arma::mat y, bool stdlik);
+RcppExport SEXP _ldsr_propagate(SEXP thetaSEXP, SEXP uSEXP, SEXP vSEXP, SEXP ySEXP, SEXP stdlikSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type v(vSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type y(ySEXP);
+    Rcpp::traits::input_parameter< bool >::type stdlik(stdlikSEXP);
+    rcpp_result_gen = Rcpp::wrap(propagate(theta, u, v, y, stdlik));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_ldsr_Kalman_smoother", (DL_FUNC) &_ldsr_Kalman_smoother, 5},
     {"_ldsr_Mstep", (DL_FUNC) &_ldsr_Mstep, 4},
     {"_ldsr_LDS_EM", (DL_FUNC) &_ldsr_LDS_EM, 6},
+    {"_ldsr_propagate", (DL_FUNC) &_ldsr_propagate, 5},
     {NULL, NULL, 0}
 };
 
