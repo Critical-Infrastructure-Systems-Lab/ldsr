@@ -84,14 +84,13 @@ List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool std
     Vs = Vu;
     // Cov = Vs; // Cov(X_t+1, X_t)
     J.zeros(1, T);
-
+    J.col(T-1) = Vu.col(T-1) * A * inv(A * Vu.col(T-1) * A + Q);
     for (int t=T-2; t>=0; t--) {
         J.col(t) = Vu.col(t) * A * inv(Vp.col(t+1));
         Xs.col(t) = Xu.col(t) + J.col(t) * (Xs.col(t+1) - Xp.col(t+1));
         Vs.col(t) = Vu.col(t) + J.col(t) * (Vs.col(t+1) - Vp.col(t+1)) * trans(J.col(t));
         // Cov.col(t) = Vs.col(t+1)*J;
     }
-
     // Final prediction
     Ys = C*Xs + D*v;
 
@@ -149,9 +148,9 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
     mat D = P.cols(1, d);
 
     // A and B ================================
-    mat Tx1x = X.cols(1, T-1) * trans(X.cols(0, T-2)) + V.cols(1, T-1) * trans(J.cols(0, T-2));;
+    mat Tx1x = X.cols(1, T-1) * trans(X.cols(0, T-2)) + V.cols(1, T-1) * trans(J.cols(0, T-2));
     mat Tx1u = X.cols(1, T-1) * trans(u.cols(0, T-2));
-    mat Txx  = X.cols(0, T-2) * trans(X.cols(0, T-2)) + accu(V.cols(0, T-2));;
+    mat Txx  = X.cols(0, T-2) * trans(X.cols(0, T-2)) + accu(V.cols(0, T-2));
     mat Tux  = u.cols(0, T-2) * trans(X.cols(0, T-2));
     mat Txu  = Tux.t();
     mat Tuu  = u.cols(0, T-2) * trans(u.cols(0, T-2));
@@ -166,14 +165,22 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
     // Q ===================================
     mat Tux1 = trans(Tx1u);
     mat Tx1x1 = X.cols(1, T-1) * trans(X.cols(1, T-1)) + accu(V.cols(1, T-1));
+    // Note: Txx1 = Tx1x is not true for the first few time steps, but using P(t+1,t) is better
+    // because this is the quantity derived from the backward recursion.
+    // P(t, t+1) is not a standard quantity that is derived and therefore we shouldn't use
+    // V_t J_{t+1} to calculate it.
+    // Using the symmetric form matches the alternate formula for Q
+    mat Txx1 = trans(Tx1x);
 
-    mat Q = (Tx1x1 - A*Txx*A - Tx1u*trans(B) - B*Tux1 + B*Tuu*trans(B)) / (T-1);
+    // mat Q2 = (Tx1x1 - A*Txx*A - Tx1u*trans(B) - B*Tux1 + B*Tuu*trans(B)) / (T-1);
+    mat Q = (Tx1x1 - A*Txx1 - B*Tux1) / (T-1);
 
     // R ====================================
     mat y_hat = C * X.cols(obs) + D * v.cols(obs);
     mat delta_y = y.cols(obs) - y_hat;
 
-    mat R = (delta_y * trans(delta_y) + C*accu(V.cols(obs))*C) / obs.size();
+    // mat R = (delta_y * trans(delta_y) + C*accu(V.cols(obs))*C) / obs.size();
+    mat R = (delta_y * trans(y.cols(obs))) / obs.size();
 
     // Initial state =========================
     mat mu1 = X.col(0);
@@ -184,6 +191,7 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
                         Named("C") = C,
                         Named("D") = D,
                         Named("Q") = Q,
+                        // Named("Q2") = Q2,
                         Named("R") = R,
                         Named("mu1") = mu1,
                         Named("V1") = V1);
