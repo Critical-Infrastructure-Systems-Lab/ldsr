@@ -6,12 +6,13 @@
 #' @inheritParams LDS_reconstruction
 #' @param pc A data frame, one colulmn for each principal component
 #' @param start.year Starting year of `pc`, i.e, the first year of the paleo period. `start.year + nrow(pc) - 1` will determine the last year of the study horizon, which must be greater than or equal to the last year in `Qa`.
+#' @param transform Flow transformation, either "log", "boxcox" or "none".
 #' @param stepwise If `TRUE`, backward stepwise selection will be performed. Otherwise, all PCs will be used.
 #' @return A list of reconstruction results
 #' * rec: reconstruction
 #' * selected: a vector of selected principal components
 #' @export
-PCR_reconstruction <- function(Qa, pc, start.year, trans = 'log', stepwise = TRUE) {
+PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
 
   # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
@@ -19,59 +20,38 @@ PCR_reconstruction <- function(Qa, pc, start.year, trans = 'log', stepwise = TRU
   N <- nrow(pc)
   end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
-    stop('The last year of pc is earlier than the last year of the instrumental period.')
+    stop('Error in PCR_reconstruction(): the last year of pc is earlier than the last year of the instrumental period.')
 
-  if (trans == 'log') {
+  if (transform == 'log') {
     y <- log(Qa$Qa)
-  } else if (trans == 'boxcox') {
+  } else if (transform == 'boxcox') {
     lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam %>% 'names<-'('lambda')
     y <- car::bcPower(Qa$Qa, lambda)
-  } else if (trans == 'none') {
+  } else if (transform == 'none') {
     y <- Qa$Qa
-  } else stop('Accepted transformations are "log", "boxcox" and "none"')
+  } else stop('Error in PCR_reconstruction(): accepted transformations are "log", "boxcox" and "none" only.')
 
-  indStart <- Qa[1, year] - start.year + 1
-  indEnd <- N - (end.year - Qa[.N, year])
-  df <- cbind(pc[indStart:indEnd], y)
+  # Training  -------------------------------------------------------------------
 
-  # Main model  -------------------------------------------------------------------
+  years <- start.year:end.year
+  df <- cbind(pc[years %in% Qa$year], y)
+  fit <- lm(y ~ . , data = df, na.action = na.omit)
 
-  # Model fitting
-  if (stepwise) {
-    fit <- tryCatch(
-      step(lm(y ~ . , data = df, na.action = na.omit), direction = 'backward', trace = 0),
-      error = function(e) {
-        if (substr(e$message, 1, 16) == 'AIC is -infinity') {
-          warning('Backward selection finds AIC = -Infinity, only PC1 is used.')
-          lm(y ~ PC1 , data = df)
-        }
-      }
-    )
-    selected <- names(fit$model)[-1]   # First element is intercept
-    if (length(selected) == 0) {
-      warning('Backward selection returned empty model; model selection is skipped.')
-      fit <- lm(y ~ . , data = df, na.action = na.omit)
-      selected <- names(fit$model)[-1]   # First element is intercept
-    }
-  } else {
-    fit <- lm(y ~ . , data = df, na.action = na.omit)
-    selected <- names(fit$model)[-1]
-  }
+  # Reconstruction ----------------------------------------------------------
 
-  rec <- predict(fit, newdata = pc, interval = 'confidence')
-  if (trans == 'log') {
+  rec <- predict(fit, newdata = pc, interval = 'prediction')
+  if (transform == 'log') {
     rec <- exp(rec)
   } else {
-    if (trans == 'boxcox') rec <- (rec*lambda + 1)^(1/lambda)
+    if (transform == 'boxcox') rec <- (rec*lambda + 1)^(1/lambda)
   }
   rec <- data.table(rec)
   setnames(rec, c('Q', 'Ql', 'Qu'))
-  rec$year <- start.year:end.year
+  rec$year <- years
 
   list(rec = rec,
        coeffs = fit$coefficients,
-       sigma = summary(fit)$sigma,
-       selected = selected)
+       sigma = summary(fit)$sigma)
 }
 
 #' Cross validation of PCR reconstruction.
@@ -85,70 +65,66 @@ PCR_reconstruction <- function(Qa, pc, start.year, trans = 'log', stepwise = TRU
 #' * Z: the cross-validation points
 #' @export
 
-cvPCR <- function(Qa, pc, start.year, trans = 'log', k, CV.reps = 100, Z = NULL) {
+cvPCR <- function(Qa, pc, start.year, transform = 'log', k, CV.reps = 100, Z = NULL) {
 
   # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
   pc <- as.data.table(pc)
   N <- nrow(pc)
-  n <- nrow(Qa)
   end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
-    stop('The last year of pc is earlier than the last year of the instrumental period.')
+    stop('Error in PCR_reconstruction(): the last year of pc is earlier than the last year of the instrumental period.')
 
-  if (trans == 'log') {
+  if (transform == 'log') {
     y <- log(Qa$Qa)
-  } else if (trans == 'boxcox') {
-    lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam %>% 'names<-'('lambda')
+  } else if (transform == 'boxcox') {
+    lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam
+    names(lambda) <-'lambda'
     y <- car::bcPower(Qa$Qa, lambda)
-  } else if (trans == 'none') {
+  } else if (transform == 'none') {
     y <- Qa$Qa
-  } else stop('Accepted transformations are "log", "boxcox" and "none"')
+  } else stop('Error in PCR_reconstruction(): accepted transformations are "log", "boxcox" and "none" only.')
 
-  indStart <- Qa[1, year] - start.year + 1
-  indEnd <- N - (end.year - Qa[.N, year])
-  df <- cbind(pc[indStart:indEnd], y)
+  years <- start.year:end.year
+  df <- cbind(pc[years %in% Qa$year], y)
 
-  # Function to calculate cross validation metricsO
+  # Leave-k-out cross validation with the indices of the k data points to be left out supplied in z
+  # Returns a vector of performance metrics
   cv <- function(z, df) {
-    # Leave-k-out cross validation with the indices of the k data points to be left out supplied in z
-    # Returns a vector of performance metrics
-    fit <- lm(y ~ . , data = df, subset = setdiff(1:n, z))
+    fit <- lm(y ~ . , data = df[-z])
     rec <- predict(fit, newdata = df)
-    if (trans == 'log') {
+    if (transform == 'log') {
       rec <- exp(rec)
     } else {
-      if (trans == 'boxcox') rec <- (rec*lambda + 1)^(1/lambda)
+      if (transform == 'boxcox') rec <- (rec*lambda + 1)^(1/lambda)
     }
-
     list(metric = calculate_metrics(rec, Qa$Qa, z),
          Ycv = rec)
   }
 
   # Cross validation ------------------------------------------------------------
-  nObs <- Qa[!is.na(Qa), .N]
-
-  if (missing(k)) k <- ceiling(nObs/10) # Default 10%
+  obsInd <- which(!is.na(Qa$Qa))
+  nObs <- length(obsInd)
 
   if (is.null(Z)) {
-    Z <- replicate(CV.reps, sample(1:nObs, size = k, replace = FALSE), simplify = FALSE)
+    if (missing(k)) k <- ceiling(nObs/10) # Default 10%
+    Z <- if (k == 1) {
+      split(obsInd, obsInd) # Leave-one-out
+    } else {
+      replicate(CV.reps, sample(obsInd, size = k, replace = FALSE), simplify = FALSE)
+    }
   } else {
-    if (!is.list(Z)) stop("Please provide the cross-validation points in a list.")
+    if (!is.list(Z)) stop("Error in cvPCR: please provide the cross-validation points (Z) in a list.")
   }
-  cv_res <- if (k > 1) { # Leave-k-out, k > 1
-    lapply(Z, cv, df = df)
-  } else { # Leave-one-out
-    lapply(1:n, cv, df = df)
-  }
-  metrics.dist <- rbindlist(lapply(cv_res, '[[', 'metric'))
-  Ycv <- as.data.table(sapply(cv_res, '[[', 'Ycv'))
-  Ycv$year <- Qa$year
-  Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
-
-  list(metrics.dist = metrics.dist,
-       metrics = colMeans(metrics.dist),
+  CV.reps <- length(Z)
+  cv_res <- lapply(Z, cv, df = df)
+  metrics.dist <- sapply(cv_res, '[[', 'metric')
+  Ycv <- cbind(Qa$year, sapply(cv_res, '[[', 'Ycv'))
+  colnames(Ycv) <- c('year', paste0('cv', 1:CV.reps))
+  list(metrics.dist = as.data.table(t(metrics.dist)),
+       metrics = rowMeans(metrics.dist),
        Ycv = Ycv,
-       Z = Z)
+       Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
 }
 
 
@@ -156,16 +132,21 @@ cvPCR <- function(Qa, pc, start.year, trans = 'log', k, CV.reps = 100, Z = NULL)
 #'
 #' @inheritParams PCR_reconstruction
 #' @param pc.list A list, each element is a set of principal component as in `PCR_reconstruction`'s `pc`
+#' @param agg.type Type of ensemble aggregate. There are 3 options: 'average': the ensemble average is returned; 'best member': the member with the best performance score is used; 'best overall': if the ensemble average is better than the best member, it will be used, otherwise the best member will be used.
+#' @param criterion The performance criterion to be used.
 #' @export
-PCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log', stepwise = TRUE) {
+PCR_ensemble <- function(Qa, pc.list, start.year, transform = 'log',
+                         agg.type = c('average', 'best member', 'best overall'),
+                         criterion = c('RE', 'CE', 'nRMSE', 'KGE')) {
 
   # Non-standard call issue in R CMD check
-  Q <- NULL
+  # Q <- NULL
 
-  ensemble <- lapply(pc.list, function(pc)
-    PCR_reconstruction(Qa, pc, start.year, trans, stepwise))
+   ensemble <- lapply(pc.list, PCR_reconstruction,
+                     Qa = Qa, start.year = start.year, transform = transform)
 
   rec <- rbindlist(lapply(ensemble, '[[', 'rec'))[, list(Qa = mean(Q)), by = year]
+
 
   list(rec = rec,
        ensemble = ensemble)
@@ -181,7 +162,7 @@ PCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log', stepwise = TRUE
 #' * Ycv: the predicted streamflow in each cross validation run
 #' * Z: the cros
 #' @export
-cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
+cvPCR_ensemble <- function(Qa, pc.list, start.year, transform = 'log',
                            k, CV.reps = 100, Z = NULL) {
 
   # Preprocessing ------------------------------------------------------------------
@@ -194,7 +175,7 @@ cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
     instYears <- Qa$year
     Qa2 <- copy(Qa)
     Qa2[z, Qa := NA]
-    recResults <- PCR_ensemble(Qa2, pc.list, start.year, trans, stepwise = FALSE)
+    recResults <- PCR_ensemble(Qa2, pc.list, start.year, transform)
     rec <- recResults$rec[year %in% instYears, Qa]
 
     list(metric = calculate_metrics(rec, Qa$Qa, z),
@@ -202,21 +183,20 @@ cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
   }
 
   # Cross validation ------------------------------------------------------------
-  obsInd <- which(!is.na(Qa))
+  obsInd <- which(!is.na(Qa$Qa))
   nObs <- length(obsInd)
 
-  if (missing(k)) k <- ceiling(nObs/10) # Default 10%
-
   if (is.null(Z)) {
-    Z <- replicate(CV.reps, sample(1:nObs, size = k, replace = FALSE), simplify = FALSE)
+    if (missing(k)) k <- ceiling(nObs/10) # Default 10%
+    Z <- if (k == 1) {
+      split(obsInd, obsInd) # Leave-one-out
+    } else {
+      replicate(CV.reps, sample(obsInd, size = k, replace = FALSE), simplify = FALSE)
+    }
   } else {
-    if (!is.list(Z)) stop("Please provide the cross-validation points in a list.")
+    if (!is.list(Z)) stop("Error in cvPCR_ensemble: please provide the cross-validation points (Z) in a list.")
   }
-  cv_res <- if (k > 1) { # Leave-k-out, k > 1
-    lapply(Z, cv, Qa = Qa, pc.list = pc.list)
-  } else { # Leave-one-out
-    lapply(obsInd, cv, Qa = Qa, pc.list = pc.list)
-  }
+  cv_res <- lapply(Z, cv, Qa = Qa, pc.list = pc.list)
   metrics.dist <- rbindlist(lapply(cv_res, '[[', 'metric'))
   Ycv <- as.data.table(sapply(cv_res, '[[', 'Ycv'))
   Ycv$year <- Qa$year
@@ -224,6 +204,5 @@ cvPCR_ensemble <- function(Qa, pc.list, start.year, trans = 'log',
 
   list(metrics.dist = metrics.dist,
        metrics = colMeans(metrics.dist),
-       Ycv = Ycv,
-       Z = Z)
+       Ycv = Ycv)
 }
