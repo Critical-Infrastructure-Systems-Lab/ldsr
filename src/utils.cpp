@@ -34,13 +34,13 @@ double nRMSE(NumericVector yhat, NumericVector y) {
 
 //' Pearson's correlation
 //'
-//' Calculate the Pearson's correlation using the numerically stable formulation (see References)
+//' Calculate the Pearson's correlation using the numerically stable formulation (see References). Internal function.
 //' @param x First variable
 //' @param y Second variable
 //' @return Pearson's correlation
 //' @section Reference John D. Cook's article at https://www.johndcook.com/blog/2008/11/05/how-to-calculate-pearson-correlation-accurately/
 //[[Rcpp::export]]
-double cor(NumericVector x, NumericVector y) {
+double corr(NumericVector x, NumericVector y) {
   double xbar = mean(x);
   double ybar = mean(y);
   double sx = sd(x);
@@ -62,7 +62,7 @@ double KGE(NumericVector yhat, NumericVector y) {
   double mu_hat = mean(yhat);
   double sigma = sd(y);
   double sigma_hat = sd(yhat);
-  double r = cor(yhat, y);
+  double r = corr(yhat, y);
   double alpha = sigma_hat / sigma;
   double beta = mu_hat / mu;
   double EDsq = (r - 1) * (r - 1) + (alpha - 1) * (alpha - 1) + (beta - 1) * (beta - 1);
