@@ -3,9 +3,9 @@ context("EM")
 u <- v <- t(P1pc[,c(1,3,4,6,9,11,12)])
 
 
-test_that("Fixed restarts works and gives a warning for serial computation", {
-  expect_warning(fit <- LDS_reconstruction(P1annual, u, v, start.year = 1600, method = 'EM',
-                                           init = c(0.4, rep(-0.03, 7), 0.2, rep(-0.03, 7))))
+test_that("Fixed restarts works", {
+  fit <- LDS_reconstruction(P1annual, u, v, start.year = 1600, method = 'EM',
+                            init = c(0.4, rep(-0.03, 7), 0.2, rep(-0.03, 7), 0.1, 0.1, 0, 0.1))
   expect_is(fit, "list")
 })
 
@@ -18,7 +18,7 @@ test_that("Randomized restarts works serially", {
 
 test_that("Cross validation works in serial with fixed restarts", {
     expect_is(cvLDS(P1annual, u, v, start.year = 1600, method = 'EM',
-                    init = c(0.4, rep(-0.03, 7), 0.2, rep(-0.03, 7)),
+                    init = c(0.4, rep(-0.03, 7), 0.2, rep(-0.03, 7), 0.1, 0.1, 0, 0.1),
                     CV.reps = 2, parallel = FALSE),
               "list")
 })
