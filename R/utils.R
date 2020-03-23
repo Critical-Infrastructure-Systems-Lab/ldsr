@@ -51,3 +51,55 @@ water_to_calendar_year <- function(df, dt, keep.all = FALSE) {
         if (keep.all) df[] else df[(dt + 1):(.N - (12 - dt))]
     }
 }
+
+#' Reconstruction metrics
+#'
+#' Calculate reconstruction metrics from the instrumental period
+#' @param sim A vector of reconstruction output for instrumental period
+#' @param obs A vector of all observations
+#' @param z A vector of left out indices in cross validation
+#' @return A named vector of performance metrics
+#' @export
+calculate_metrics <- function(sim, obs, z) {
+    train.sim <- sim[-z]
+    train.sim <- train.sim[!is.na(train.sim)]
+    train.obs <- obs[-z]
+    train.obs <- train.obs[!is.na(train.obs)]
+    val.sim <- sim[z]
+    val.obs <- obs[z]
+
+    c(R2    = NSE(train.sim, train.obs), # Use the NSE form of R2
+      RE    = RE(val.sim, val.obs, mean(train.obs)),
+      CE    = NSE(val.sim, val.obs),
+      nRMSE = nRMSE(val.sim, val.obs),
+      KGE   = KGE(val.sim, val.obs)
+    )
+}
+
+#' Make cross-validation folds.
+#'
+#' Make a list of cross-validation folds. Each element of the list is a vector of the cross-validation points for one cross-validation run.
+#' @param obs Vector of observations.
+#' @param nRuns Number of repetitions.
+#' @param frac Fraction of left-out points. For leave-one-out, use `frac = 1`, otherwise use any value less than 1. Default is 0.1 (leave-10%-out).
+#' @param contiguous Logical. If `TRUE`, the default, the left-out points are made in contiguous blocks; otherwise, they are scattered randomly.
+#' @export
+make_Z <- function(obs, nRuns = 30, frac = 0.1, contiguous = TRUE) {
+  obsInd <- which(!is.na(obs))
+  if (frac == 1) {
+    split(obsInd, obsInd)
+  } else {
+    n <- length(obsInd)
+    k <- floor(n * frac) # leave-k-out
+    if (contiguous) {
+      maxInd <- n - k # Highest possible position in of obsInd
+      if (maxInd < nRuns) { # Not enough samples, reduce k
+        maxInd <- nRuns
+        k <- n - nRuns
+      }
+      lapply(sort(sample(1:maxInd, nRuns)), function(x) obsInd[x:(x + k)])
+    } else {
+      replicate(nRuns, sort(sample(obsInd, k, replace = FALSE)), simplify = FALSE)
+    }
+  }
+}
