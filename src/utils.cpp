@@ -20,16 +20,15 @@ double NSE(NumericVector yhat, NumericVector y) {
 
 //' Normalized root-mean-square error
 //'
-//' RMSE is normalized by the mean of the observation
+//' RMSE is normalized by the normalization constant
 //' @param yhat Model outputs
 //' @param y Observations
 //' @return normalized RMSE
 //' @export
 //[[Rcpp::export]]
-double nRMSE(NumericVector yhat, NumericVector y) {
-  double ybar = mean(y);
+double nRMSE(NumericVector yhat, NumericVector y, double normConst) {
   double rmse = sqrt(mean((y - yhat) * (y - yhat)));
-  return rmse / ybar;
+  return rmse / normConst;
 }
 
 //' Pearson's correlation
@@ -77,9 +76,8 @@ double KGE(NumericVector yhat, NumericVector y) {
 //' @return RE
 //' @export
 //[[Rcpp::export]]
-double RE(NumericVector yhat, NumericVector y, NumericVector yc_bar) {
+double RE(NumericVector yhat, NumericVector y, double yc_bar) {
   double rss = sum((y - yhat) * (y - yhat));
   double tss = sum((y - yc_bar) * (y - yc_bar));
   return 1 - rss/tss;
 }
-

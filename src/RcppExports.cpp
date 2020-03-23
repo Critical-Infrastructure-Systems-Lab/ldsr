@@ -79,14 +79,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // nRMSE
-double nRMSE(NumericVector yhat, NumericVector y);
-RcppExport SEXP _ldsr_nRMSE(SEXP yhatSEXP, SEXP ySEXP) {
+double nRMSE(NumericVector yhat, NumericVector y, double normConst);
+RcppExport SEXP _ldsr_nRMSE(SEXP yhatSEXP, SEXP ySEXP, SEXP normConstSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericVector >::type yhat(yhatSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    rcpp_result_gen = Rcpp::wrap(nRMSE(yhat, y));
+    Rcpp::traits::input_parameter< double >::type normConst(normConstSEXP);
+    rcpp_result_gen = Rcpp::wrap(nRMSE(yhat, y, normConst));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -115,14 +116,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // RE
-double RE(NumericVector yhat, NumericVector y, NumericVector yc_bar);
+double RE(NumericVector yhat, NumericVector y, double yc_bar);
 RcppExport SEXP _ldsr_RE(SEXP yhatSEXP, SEXP ySEXP, SEXP yc_barSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericVector >::type yhat(yhatSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type yc_bar(yc_barSEXP);
+    Rcpp::traits::input_parameter< double >::type yc_bar(yc_barSEXP);
     rcpp_result_gen = Rcpp::wrap(RE(yhat, y, yc_bar));
     return rcpp_result_gen;
 END_RCPP
@@ -134,7 +135,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_ldsr_LDS_EM", (DL_FUNC) &_ldsr_LDS_EM, 6},
     {"_ldsr_propagate", (DL_FUNC) &_ldsr_propagate, 5},
     {"_ldsr_NSE", (DL_FUNC) &_ldsr_NSE, 2},
-    {"_ldsr_nRMSE", (DL_FUNC) &_ldsr_nRMSE, 2},
+    {"_ldsr_nRMSE", (DL_FUNC) &_ldsr_nRMSE, 3},
     {"_ldsr_corr", (DL_FUNC) &_ldsr_corr, 2},
     {"_ldsr_KGE", (DL_FUNC) &_ldsr_KGE, 2},
     {"_ldsr_RE", (DL_FUNC) &_ldsr_RE, 3},

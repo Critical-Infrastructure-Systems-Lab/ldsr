@@ -71,7 +71,7 @@ calculate_metrics <- function(sim, obs, z) {
     c(R2    = NSE(train.sim, train.obs), # Use the NSE form of R2
       RE    = RE(val.sim, val.obs, mean(train.obs)),
       CE    = NSE(val.sim, val.obs),
-      nRMSE = nRMSE(val.sim, val.obs),
+      nRMSE = nRMSE(val.sim, val.obs, mean(obs, na.rm = TRUE)),
       KGE   = KGE(val.sim, val.obs)
     )
 }

@@ -74,18 +74,18 @@ NSE <- function(yhat, y) {
 
 #' Normalized root-mean-square error
 #'
-#' RMSE is normalized by the mean of the observation
+#' RMSE is normalized by the normalization constant
 #' @param yhat Model outputs
 #' @param y Observations
 #' @return normalized RMSE
 #' @export
-nRMSE <- function(yhat, y) {
-    .Call(`_ldsr_nRMSE`, yhat, y)
+nRMSE <- function(yhat, y, normConst) {
+    .Call(`_ldsr_nRMSE`, yhat, y, normConst)
 }
 
 #' Pearson's correlation
 #'
-#' Calculate the Pearson's correlation using the numerically stable formulation (see References)
+#' Calculate the Pearson's correlation using the numerically stable formulation (see References). Internal function.
 #' @param x First variable
 #' @param y Second variable
 #' @return Pearson's correlation
