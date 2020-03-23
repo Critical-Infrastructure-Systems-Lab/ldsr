@@ -62,3 +62,56 @@ propagate <- function(theta, u, v, y, stdlik = TRUE) {
     .Call(`_ldsr_propagate`, theta, u, v, y, stdlik)
 }
 
+#' Nash-Sutcliffe Efficiency
+#'
+#' @param yhat Model outputs
+#' @param y Observations
+#' @return NSE
+#' @export
+NSE <- function(yhat, y) {
+    .Call(`_ldsr_NSE`, yhat, y)
+}
+
+#' Normalized root-mean-square error
+#'
+#' RMSE is normalized by the mean of the observation
+#' @param yhat Model outputs
+#' @param y Observations
+#' @return normalized RMSE
+#' @export
+nRMSE <- function(yhat, y) {
+    .Call(`_ldsr_nRMSE`, yhat, y)
+}
+
+#' Pearson's correlation
+#'
+#' Calculate the Pearson's correlation using the numerically stable formulation (see References)
+#' @param x First variable
+#' @param y Second variable
+#' @return Pearson's correlation
+#' @section Reference John D. Cook's article at https://www.johndcook.com/blog/2008/11/05/how-to-calculate-pearson-correlation-accurately/
+corr <- function(x, y) {
+    .Call(`_ldsr_corr`, x, y)
+}
+
+#' Kling-Gupta Efficiency
+#'
+#' @param yhat Model outputs
+#' @param y Observations
+#' @return KGE
+#' @export
+KGE <- function(yhat, y) {
+    .Call(`_ldsr_KGE`, yhat, y)
+}
+
+#' Reduction of Error
+#'
+#' @param yhat Model outputs in the validation set
+#' @param y Observations in the validation set
+#' @param yc_bar Mean observations in the calibration set
+#' @return RE
+#' @export
+RE <- function(yhat, y, yc_bar) {
+    .Call(`_ldsr_RE`, yhat, y, yc_bar)
+}
+
