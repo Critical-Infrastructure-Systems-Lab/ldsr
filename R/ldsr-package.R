@@ -4,10 +4,8 @@
 #' @docType package
 #' @name ldsr
 #' @import data.table
-#' @import stats
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar% %:%
-#' @importFrom magrittr %>%
 #' @importFrom parallel detectCores makeCluster stopCluster
 #' @importFrom Rcpp evalCpp sourceCpp
 #' @useDynLib ldsr, .registration = TRUE
