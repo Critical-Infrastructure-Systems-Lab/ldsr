@@ -7,7 +7,6 @@
 #' @import stats
 #' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar% %:%
-#' @importFrom hydroGOF ssq NSE KGE rmse
 #' @importFrom magrittr %>%
 #' @importFrom parallel detectCores makeCluster stopCluster
 #' @importFrom Rcpp evalCpp sourceCpp
