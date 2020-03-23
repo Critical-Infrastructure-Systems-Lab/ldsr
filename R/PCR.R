@@ -1,24 +1,29 @@
-#' Reconstruction with Principal Component Regression
+#' Principal Component Regression Reconstruction
 #'
-#' Reconstruct streamflow using the given principal compone11nts and backward selection.
-#' Since this is the benchmark for the LDS model, and for simplicity, learning and cross-validation are performed in one go, instead of with two separate functions as in the case of LDS.
-#'
+#' Reconstruction with principal component linear regression.
 #' @param Qa Observations: a data.frame of annual streamflow with at least two columns: year and Qa.
-#' @param pc A data.frame, one colulmn for each principal component
-#' @param start.year Starting year of `pc`, i.e, the first year of the paleo period. `start.year + nrow(pc) - 1` will determine the last year of the study horizon, which must be greater than or equal to the last year in `Qa`.
+#' @param pc For a single model: a data.frame, one column for each principal component. For an ensemble reconstruction: a list, each element is a data.frame of principal components.
+#' @param start.year Starting year of the climate proxies, i.e, the first year of the paleo period. `start.year + nrow(pc) - 1` will determine the last year of the study horizon, which must be greater than or equal to the last year in `Qa`.
 #' @param transform Flow transformation, either "log", "boxcox" or "none".
-#' @return A list of reconstruction results
-#' * rec: reconstruction
-#' * selected: a vector of selected principal components
+#' @return A list of reconstruction results, with the following elements:
+#' ## For a single-model reconstruction:
+#' * rec: reconstructed streamflow with 95% prediction interval; a data.table with four columns: year, Q, Ql (lower bound), and Qu (upper bound).
+#' * coeffs: the regression coefficients.
+#' * sigma: the residual standard deviation.
+#' ## For an ensemble reconstruction:
+#' * rec: the ensemble average reconstruction; a data.table with two columns: year and Q.
+#' * ensemble: a list of ensemble members, each element is reconstructed from one element of `pc` and is itself a list of three elements: Q (a vector of reconstructed flow), coeffs and sigma.
+#' Note that for ensemble reconstruction, `ldsr` does not provide uncertainty estimates. It is up to the user to do so, for example, using ensemble spread.
 #' @export
 PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
 
   # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
-  pc <- as.data.table(pc)
-  end.year <- start.year + nrow(pc) - 1
+  single <- is.data.frame(pc)
+  N <- if (single) nrow(pc) else nrow(pc[[1]])
+  end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
-    stop('The last year of pc is earlier than the last year of the instrumental period.')
+    stop('The last year of the principal components is earlier than the last year of the instrumental period.')
 
   y <- Qa$Qa
   if (transform == 'log') {
@@ -27,26 +32,60 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
     bc <- MASS::boxcox(y ~ 1, plotit = FALSE)
     lambda <- bc$x[which.max(bc$y)]
     y <- (y^lambda - 1) / lambda
-  } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, with transform = "none".')
+  } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, and set transform = "none".')
 
   years <- start.year:end.year
-  df <- pc[years %in% Qa$year][, y := y]
+  instPeriod <- which(years %in% Qa$year)
 
   # Reconstruction ----------------------------------------------------------
-  fit <- lm(y ~ ., data = df, na.action = na.omit)
-  rec <- predict(fit, newdata = pc, interval = 'prediction')
-  if (transform == 'log') {
-    rec <- exp(rec)
+  if (single) {
+    pc <- as.data.table(pc)
+    df <- pc[years %in% Qa$year][, y := y]
+    fit <- stats::lm(y ~ ., data = df, na.action = na.omit)
+    rec <- stats::predict(fit, newdata = pc, interval = 'prediction')
+    if (transform == 'log') {
+      rec <- exp(rec)
+    } else {
+      if (transform == 'boxcox') rec <- (rec*lambda + 1)^(1/lambda)
+    }
+    rec <- data.table(rec)
+    setnames(rec, c('Q', 'Ql', 'Qu'))
+    rec$year <- years
+    ans <- list(rec = rec,
+                coeffs = fit$coefficients,
+                sigma = stats::sigma(fit))
   } else {
-    if (transform == 'boxcox') rec <- (rec*lambda + 1)^(1/lambda)
+    ensemble <- lapply(pc,
+                       function(pcX) {
+                         setDT(pcX)
+                         df <- pcX[instPeriod][, y := y]
+                         fit <- lm(y ~ ., data = df, na.action = na.omit)
+                         list(Q = stats::predict(fit, newdata = pcX),
+                              coeffs = fit$coefficients,
+                              sigma = stats::sigma(fit))
+                       })
+    Q <- rowMeans(sapply(ensemble, '[[', 'Q'))
+    if (transform == 'log') {
+      Q <- exp(Q)
+    } else {
+      if (transform == 'boxcox') Q <- (Q*lambda + 1)^(1/lambda)
+    }
+    rec <- data.table(year = years, Q = Q)
+    ans <- list(rec = rec, ensemble = ensemble)
   }
-  rec <- data.table(rec)
-  setnames(rec, c('Q', 'Ql', 'Qu'))
-  rec$year <- years
+  ans
+}
 
-  list(rec = rec,
-       coeffs = fit$coefficients,
-       sigma = summary(fit)$sigma)
+#' One cross-validation run
+#'
+#' Make one prediction for one cross-validation run. This is a subroutine to be called by other cross-validation functions.
+#' @param df The training data, with one column named y, the (transformed) observations. and other columns the predictors.
+#' @param z A vector of left-out points
+#' @return A vector of prediction.
+#' @export
+one_pcr_cv <- function(df, z) {
+  fit <- lm(y ~ ., data = df[-z])
+  predict(fit, newdata = df)
 }
 
 #' Cross validation of PCR reconstruction.
@@ -64,115 +103,16 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL) {
 
   # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
-  pc <- as.data.table(pc)
-  end.year <- start.year + nrow(pc) - 1
+  if (is.data.frame(pc)) {
+    N <- nrow(pc)
+    pc.list <- list(pc)
+  } else {
+    N <- nrow(pc[[1]])
+    pc.list <- pc
+  }
+  end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
     stop('The last year of pc is earlier than the last year of the instrumental period.')
-
-  y <- Qa$Qa
-  if (transform == 'log') {
-    y <- log(y)
-  } else if (transform == 'boxcox') {
-    bc <- MASS::boxcox(y ~ 1, plotit = FALSE)
-    lambda <- bc$x[which.max(bc$y)]
-    y <- (y^lambda - 1) / lambda
-  } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, with transform = "none".')
-
-  years <- start.year:end.year
-  df <- pc[years %in% Qa$year][, y := y]
-
-  if (is.null(Z)) {
-    Z <- make_Z(y)
-  } else {
-    if (!is.list(Z)) stop("Please provide the cross-validation folds (Z) in a list.")
-  }
-  # Cross validation ------------------------------------------------------------
-  cv <- function(z) {
-    # Leave-k-out cross validation with the indices of the k data points to be left out supplied in z
-    # Returns a vector of performance metrics, which is calculated on the transformed time series.
-    fit <- lm(y ~ ., data = df[-z])
-    yhat <- predict(fit, newdata = df)
-    list(metric = calculate_metrics(yhat, y, z),
-         Ycv = yhat)
-  }
-
-  cv_res <- lapply(Z, cv)
-  metrics.dist <- sapply(cv_res, '[[', 'metric')
-  Ycv <- sapply(cv_res, '[[', 'Ycv')
-  dimnames(Ycv) <- NULL
-  list(metrics.dist = t(metrics.dist),
-       metrics = rowMeans(metrics.dist),
-       obs = data.table(year = Qa$year, y = y),
-       Ycv = Ycv,
-       Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
-}
-
-
-#' Ensemble PCR reconstruction
-#'
-#' Same as `PCR` but using ensemble model.  This function builds a reconstruction for each ensemble member then calculates the ensemble average.
-#' @inheritParams PCR_reconstruction
-#' @param pc.list A list, each element is a set of principal component as in `PCR_reconstruction`'s `pc`
-#' @return A list with two elements
-#' * rec: the ensemble averaged reconstructed streamflow
-#' * ensemble: the ensemble of reconstructions; a matrix, one column for each ensemble member
-#' @export
-PCR_ensemble <- function(Qa, pc.list, start.year, transform = 'log') {
-
-  # Preprocessing ------------------------------------------------------------------
-  Qa <- as.data.table(Qa)
-  end.year <- start.year + nrow(pc.list[[1]]) - 1
-  if (end.year < Qa[.N, year])
-    stop('The last year of the principal components is earlier than the last year of the instrumental period.')
-
-  y <- Qa$Qa
-  if (transform == 'log') {
-    y <- log(y)
-  } else if (transform == 'boxcox') {
-    bc <- MASS::boxcox(y ~ 1, plotit = FALSE)
-    lambda <- bc$x[which.max(bc$y)]
-    y <- (y^lambda - 1) / lambda
-  } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, with transform = "none".')
-
-  years <- start.year:end.year
-  instPeriod <- which(years %in% Qa$year)
-
-  # Reconstruction ----------------------------------------------------------
-  ensemble <- sapply(pc.list,
-                     function(pc) {
-                       pc <- as.data.table(pc)
-                       df <- pc[instPeriod][, y := y]
-                       fit <- lm(y ~ ., data = df, na.action = na.omit)
-                       predict(fit, newdata = pc)
-                     })
-  Q <- rowMeans(ensemble)
-  if (transform == 'log') {
-    Q <- exp(Q)
-  } else {
-    if (transform == 'boxcox') Q <- (Q*lambda + 1)^(1/lambda)
-  }
-  rec <- data.table(year = years, Q = Q)
-  list(rec = rec, ensemble = ensemble)
-}
-
-#' Cross validation of PCR_ensemble reconstruction.
-#'
-#' @inheritParams cvPCR
-#' @inheritParams PCR_ensemble
-#' @return A list of cross validation results
-#' * metrics.dist: distribution of performance metrics across all cross-validation runs; a matrix, one column for each metric, with column names.
-#' * metrics: average performance metrics; a named vector.
-#' * obs: the (transformed) observations, a data.table with two columns (year, y)
-#' * Ycv: the predicted streamflow in each cross validation run; a matrix, one column for each cross-validation run
-#' * Z: the cross-validation folds
-#' @export
-cvPCR_ensemble <- function(Qa, pc.list, start.year, transform = 'log', Z = NULL) {
-
-  # Preprocessing ------------------------------------------------------------------
-  Qa <- as.data.table(Qa)
-  end.year <- start.year + nrow(pc.list[[1]]) - 1
-  if (end.year < Qa[.N, year])
-    stop('The last year of the principal components is earlier than the last year of the instrumental period.')
 
   y <- Qa$Qa
   if (transform == 'log') {
@@ -193,30 +133,17 @@ cvPCR_ensemble <- function(Qa, pc.list, start.year, transform = 'log', Z = NULL)
     if (!is.list(Z)) stop("Please provide the cross-validation folds (Z) in a list.")
   }
 
-  # Function to calculate cross validation metrics
-  cv <- function(z) {
-    ensemble <- sapply(df.list,
-                       function(df) {
-                         fit <- lm(y ~ ., data = df[-z], na.action = na.omit)
-                         predict(fit, newdata = df)
-                       })
-    yhat <- rowMeans(ensemble)
-    list(metric = calculate_metrics(yhat, y, z),
-         Ycv = yhat)
-  }
-
   # Cross validation ------------------------------------------------------------
-  cv_res <- lapply(Z, cv)
-  metrics.dist <- sapply(cv_res, '[[', 'metric')
-  Ycv <- sapply(cv_res, '[[', 'Ycv')
-  dimnames(Ycv) <- NULL
+  Ycv <- lapply(Z, function(z) rowMeans(sapply(df.list, one_pcr_cv, z = z)))
+  metrics.dist <- mapply(calculate_metrics,
+                         sim = Ycv, z = Z,
+                         MoreArgs = list(obs = y))
   list(metrics.dist = t(metrics.dist),
        metrics = rowMeans(metrics.dist),
        obs = data.table(year = Qa$year, y = y),
-       Ycv = Ycv,
-       Z = Z)
+       Ycv = simplify2array(Ycv),
+       Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
 }
-
 
 #' Select the best reconstruction
 #'
@@ -248,7 +175,7 @@ PCR_ensemble_selection <- function(Qa, pc.list, start.year, transform = 'log', Z
     ans <- list(choice = bestMember, cv = memberCV[[bestMember]])
     if (return.all.metrics) ans$all.metrics <- memberMetrics
   } else {
-    ensembleCV <- cvPCR_ensemble(Qa, pc.list, start.year, transform, Z)
+    ensembleCV <- cvPCR(Qa, pc.list, start.year, transform, Z)
     ensembleMetrics <- ensembleCV$metrics
     ans <- if (ensembleMetrics[criterion] > memberMetrics[criterion, bestMember]) {
       list(choice = 0, cv = ensembleCV)
