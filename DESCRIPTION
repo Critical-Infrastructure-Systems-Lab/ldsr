@@ -1,31 +1,26 @@
 Package: ldsr
 Type: Package
-Title: Streamflow Reconstruction using Linear Dynamical Systems
+Title: Linear Dynamical System Reconstruction
 Version: 0.0.1
 Authors@R: c(
     person("Hung", "Nguyen", email = "ntthung@gmail.com", role = c("aut", "cre")),
     person("Stefano", "Galelli", email = "stefano_galelli@sutd.edu.sg", role = "aut")
     )
-Description: The advantage of this method is the additional state trajectory which can reveal more information about the catchment.
+Description: Streamflow (and climate) reconstruction using Linear Dynamical Systems. The advantage of this method is the additional state trajectory which can reveal more information about the catchment or climate system. For details of the method please refer to Nguyen and Galelli (2018).
 License: GPL (>= 2.0)
 Encoding: UTF-8
 LazyData: true
 Depends:
     R (>= 2.10)
 Imports:
-    cowplot,
     data.table,
-    doParallel,
+    doFuture,
     foreach,
-    ggplot2,
-    hydroGOF,
-    knitr,
-    magrittr,
+    MASS,
     parallel,
     Rcpp,
-    rmarkdown,
     stats
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0
 Roxygen:
     list(markdown = TRUE)
 LinkingTo: 
@@ -35,6 +30,7 @@ URL: https://github.com/ntthung/ldsr
 BugReports: https://github.com/ntthung/ldsr/issues
 Suggests: 
     GA,
-    car,
+    knitr,
+    rmarkdown,
     testthat
 VignetteBuilder: knitr
