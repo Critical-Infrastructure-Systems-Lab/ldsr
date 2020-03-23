@@ -234,10 +234,16 @@ PCR_ensemble_selection <- function(Qa, pc.list, start.year, transform = 'log', Z
                                    agg.type = c('best member', 'best overall'),
                                    criterion = c('RE', 'CE', 'nRMSE', 'KGE'),
                                    return.all.metrics = FALSE) {
-  # Cross-validate each member
+  if (!(agg.type %in% c('best member', 'best overall')))
+    stop('agg.type must be either "best member" or "best overall".')
+
+  if (!(criterion %in% c('RE', 'CE', 'nRMSE', 'KGE')))
+    stop('Criterion must be either RE, CE, nRMSE or KGE')
+
   memberCV <- lapply(pc.list, function(pc) cvPCR(Qa, pc, start.year, transform, Z))
   memberMetrics <- sapply(memberCV, '[[', 'metrics')
   bestMember <- which.max(memberMetrics[criterion, ])
+
   if (agg.type == 'best member') {
     ans <- list(choice = bestMember, cv = memberCV[[bestMember]])
     if (return.all.metrics) ans$all.metrics <- memberMetrics
