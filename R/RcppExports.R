@@ -10,7 +10,7 @@
 #' @param v Input matrix for the output equation (m_v rows, T columns)
 #' @param theta A list of system parameters (A, B, C, D, Q, R)'
 #' @param stdlik Boolean, whether the likelihood is divided by the number of observations. Standardizing the likelihood this way may speed up convergence in the case of long time series.
-#' @return A list of fitted elements (X, Y, V, Cov, and lik)
+#' @return A list of fitted elements (X, Y, V, J, and lik)
 #' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 Kalman_smoother <- function(y, u, v, theta, stdlik = TRUE) {
     .Call(`_ldsr_Kalman_smoother`, y, u, v, theta, stdlik)
@@ -19,7 +19,7 @@ Kalman_smoother <- function(y, u, v, theta, stdlik = TRUE) {
 #' Maximizing expected likelihood using analytical solution
 #'
 #' @inheritParams Kalman_smoother
-#' @param fit result of a Kalman_smoother
+#' @param fit result of [Kalman_smoother]
 Mstep <- function(y, u, v, fit) {
     .Call(`_ldsr_Mstep`, y, u, v, fit)
 }
@@ -29,20 +29,27 @@ Mstep <- function(y, u, v, fit) {
 #' Estimate the hidden state and model parameters given observations and exogenous inputs using the EM algorithm. This is the key backend routine of this package.
 #'
 #' @inheritParams Kalman_smoother
-#' @param init A vector of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.
+#' @param init A vector of initial values for the parameters
 #' @param niter Maximum number of iterations, default 1000
 #' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized
 #' @return A list of model results
 #' * theta: model parameters (A, B, C, D, Q, R, mu1, V1) resulted from Mstep
 #' * fit: results of Estep
-#'     - X: a matrix of fitted states
-#'     - Y: a matrix of fitted observation
-#'     - V: a matrix of covariance of X
-#'     - Cov: covariance of X_t and X_t-1
-#' * lik : log-likelihood
+#' * liks : vector of loglikelihood over the iteration steps
 #' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
-LDS_EM <- function(y, u, v, init, niter, tol) {
+LDS_EM <- function(y, u, v, init, niter = 1000L, tol = 1e-5) {
     .Call(`_ldsr_LDS_EM`, y, u, v, init, niter, tol)
+}
+
+#' Learn LDS model with multiple initial conditions
+#'
+#' This is the backend computation for [LDS_reconstruction].
+#' @inheritParams LDS_EM
+#' @param niter Maximum number of iterations, default 1000.
+#' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
+#' @return a list as produced by [LDS_EM].
+LDS_EM_restart_C <- function(y, u, v, init, niter = 1000L, tol = 1e-5, return_init = FALSE) {
+    .Call(`_ldsr_LDS_EM_restart_C`, y, u, v, init, niter, tol, return_init)
 }
 
 #' State propagation
