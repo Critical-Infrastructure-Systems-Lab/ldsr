@@ -11,13 +11,11 @@ License: GPL (>= 2.0)
 Encoding: UTF-8
 LazyData: true
 Depends:
-    R (>= 2.10)
+    R (>= 3.5)
 Imports:
     data.table,
-    doFuture,
     foreach,
     MASS,
-    parallel,
     Rcpp,
     stats
 RoxygenNote: 7.1.0
