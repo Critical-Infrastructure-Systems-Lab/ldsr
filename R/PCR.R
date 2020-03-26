@@ -92,6 +92,7 @@ one_pcr_cv <- function(df, z) {
 #'
 #' @inheritParams PCR_reconstruction
 #' @param Z A list of cross-validation folds. If `NULL`, will be created with `make_Z()` with default settings. Users are advised to use `make_Z()` to create the cross-validation folds beforehand. See [make_Z] for details.
+#' @param metric.space Either "transformed" or "original", the space to calculate the performance metrics.
 #' @return A list of cross validation results
 #' * metrics.dist: distribution of performance metrics across all cross-validation runs; a matrix, one column for each metric, with column names.
 #' * metrics: average performance metrics; a named vector.
@@ -135,20 +136,29 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL) {
 
   # Cross validation ------------------------------------------------------------
   Ycv <- lapply(Z, function(z) rowMeans(sapply(df.list, one_pcr_cv, z = z)))
+
+  if (metric.space == 'original') {
+    if (transform == 'log') {
+      Ycv <- lapply(Ycv, exp)
+    } else if (transform == 'boxcox') {
+      Ycv <- lapply(Ycv, function(x) (x^lambda + 1)^(1/lambda))
+    }
+  }
   metrics.dist <- mapply(calculate_metrics,
                          sim = Ycv, z = Z,
                          MoreArgs = list(obs = y))
+  setDT(Ycv)
   list(metrics.dist = t(metrics.dist),
        metrics = rowMeans(metrics.dist),
        obs = data.table(year = Qa$year, y = y),
-       Ycv = simplify2array(Ycv),
+       Ycv = Ycv,
        Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
 }
 
 #' Select the best reconstruction
 #'
 #' Select the best reconstruction from an ensemble.
-#' @inheritParams cvPCR_ensemble
+#' @inheritParams cvPCR
 #' @param agg.type Type of ensemble aggregate. There are 2 options: 'best member': the member with the best performance score is used; 'best overall': if the ensemble average is better than the best member, it will be used, otherwise the best member will be used.
 #' @param criterion The performance criterion to be used.
 #' @param return.all.metrics Logical, if TRUE, all members' performance scores (and the ensemble average's score, if `agg.type == 'best overall'`) are returned.
