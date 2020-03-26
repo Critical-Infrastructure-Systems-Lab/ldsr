@@ -16,7 +16,7 @@ using namespace arma;
 //' @param v Input matrix for the output equation (m_v rows, T columns)
 //' @param theta A list of system parameters (A, B, C, D, Q, R)'
 //' @param stdlik Boolean, whether the likelihood is divided by the number of observations. Standardizing the likelihood this way may speed up convergence in the case of long time series.
-//' @return A list of fitted elements (X, Y, V, Cov, and lik)
+//' @return A list of fitted elements (X, Y, V, J, and lik)
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 // [[Rcpp::export]]
 List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool stdlik = true) {
@@ -108,18 +108,17 @@ List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool std
 
     if (stdlik) lik = lik / n_obs;
 
-    return List::create(Named("X") = Xs,
-                        Named("Y") = Ys,
-                        Named("V") = Vs,
-                        // Named("Cov") = Cov,
-                        Named("J") = J,
-                        Named("lik") = lik);
+    return List::create(_["X"] = Xs,
+                        _["Y"] = Ys,
+                        _["V"] = Vs,
+                        _["J"] = J,
+                        _["lik"] = lik);
 }
 
 //' Maximizing expected likelihood using analytical solution
 //'
 //' @inheritParams Kalman_smoother
-//' @param fit result of a Kalman_smoother
+//' @param fit result of [Kalman_smoother]
 // [[Rcpp::export]]
 List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
 
@@ -172,7 +171,7 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
     // Using the symmetric form matches the alternate formula for Q
     mat Txx1 = trans(Tx1x);
 
-    // mat Q2 = (Tx1x1 - A*Txx*A - Tx1u*trans(B) - B*Tux1 + B*Tuu*trans(B)) / (T-1);
+    // mat Q = (Tx1x1 - A*Txx*A - Tx1u*trans(B) - B*Tux1 + B*Tuu*trans(B)) / (T-1);
     mat Q = (Tx1x1 - A*Txx1 - B*Tux1) / (T-1);
 
     // R ====================================
@@ -186,15 +185,14 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
     mat mu1 = X.col(0);
     mat V1 = V.col(0);
 
-    return List::create(Named("A") = A,
-                        Named("B") = B,
-                        Named("C") = C,
-                        Named("D") = D,
-                        Named("Q") = Q,
-                        // Named("Q2") = Q2,
-                        Named("R") = R,
-                        Named("mu1") = mu1,
-                        Named("V1") = V1);
+    return List::create(_["A"] = A,
+                        _["B"] = B,
+                        _["C"] = C,
+                        _["D"] = D,
+                        _["Q"] = Q,
+                        _["R"] = R,
+                        _["mu1"] = mu1,
+                        _["V1"] = V1);
 }
 
 //' Learn LDS model
@@ -202,20 +200,16 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
 //' Estimate the hidden state and model parameters given observations and exogenous inputs using the EM algorithm. This is the key backend routine of this package.
 //'
 //' @inheritParams Kalman_smoother
-//' @param init A vector of initial conditions, each element is a vector of length 4, the initial values for A, B, C and D. The initial values for Q and R are always 1, and mu_1 is 0 and V_1 is 1.
+//' @param init A vector of initial values for the parameters
 //' @param niter Maximum number of iterations, default 1000
 //' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized
 //' @return A list of model results
 //' * theta: model parameters (A, B, C, D, Q, R, mu1, V1) resulted from Mstep
 //' * fit: results of Estep
-//'     - X: a matrix of fitted states
-//'     - Y: a matrix of fitted observation
-//'     - V: a matrix of covariance of X
-//'     - Cov: covariance of X_t and X_t-1
-//' * lik : log-likelihood
+//' * liks : vector of loglikelihood over the iteration steps
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 // [[Rcpp::export]]
-List LDS_EM(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, double tol) {
+List LDS_EM(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter = 1000, double tol = 1e-5) {
 
     int d = u.n_rows;
     mat A(1, 1); A.fill(init(0));
@@ -233,15 +227,14 @@ List LDS_EM(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, do
     mat mu1(1, 1); mu1.fill(init(d+d+4));
     mat V1(1, 1);   V1.fill(init(d+d+5));
 
-    List theta = List::create(
-        Named("A") = A,
-        Named("B") = B,
-        Named("C") = C,
-        Named("D") = D,
-        Named("Q") = Q,
-        Named("R") = R,
-        Named("mu1") = mu1,
-        Named("V1") = V1);
+    List theta = List::create(_["A"] = A,
+                              _["B"] = B,
+                              _["C"] = C,
+                              _["D"] = D,
+                              _["Q"] = Q,
+                              _["R"] = R,
+                              _["mu1"] = mu1,
+                              _["V1"] = V1);
 
     vec lik(niter);
     // The exit condition relies on two consecutive iterations so we need to manually do the first two.
@@ -262,22 +255,76 @@ List LDS_EM(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter, do
         theta = Mstep(y, u, v, fit);
         fit = Kalman_smoother(y, u, v, theta);
         lik[i] = fit["lik"];
+        lastIter++;
         // Check for convergence: terminates when the change in likelihood is less than tol
         //     for two consecutive iterations.
         // Use std::abs, otherwise the compiler may understand abs as
         //     int abs(int x) and returns 0, which stops the iterations immediately.
         if (std::abs(lik[i] - lik[i-1]) < tol && std::abs(lik[i-1] - lik[i-2]) < tol) {
-            lastIter = i+1;
             break;
         }
     }
+    return List::create(_["theta"] = theta,
+                        _["fit"] = fit,
+                        _["liks"] = lik.head(lastIter),
+                        _["lik"] = fit["lik"]); // return the final likelihood for convenient access
+}
 
-    return List::create(
-        Named("theta") = theta,
-        Named("fit") = fit,
-        Named("liks") = lik.head(lastIter),
-        Named("lastIter") = lastIter,
-        Named("lik") = fit["lik"]);
+//' Learn LDS model with multiple initial conditions
+//'
+//' This is the backend computation for [LDS_reconstruction].
+//' @inheritParams LDS_EM
+//' @param niter Maximum number of iterations, default 1000.
+//' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
+//' @return a list as produced by [LDS_EM].
+// [[Rcpp::export]]
+List LDS_EM_restart_C(arma::mat y, arma::mat u, arma::mat v, List init, int niter = 1000, double tol = 1e-5, bool return_init = false) {
+
+    // Build models and keep the ones with the maximum likelihood, one for positive C, one for negative C
+    double pos_lik = R_NegInf; // likelihood for positive C
+    double neg_lik = R_NegInf; // likelihood for negative C
+    double lik;
+    int pos_best_idx;
+    int neg_best_idx;
+
+    List pos_model; // best model for postive C
+    List neg_model; // best model for negative C
+    List model;
+    List theta;
+
+    for (int i = 0; i < init.length(); i++) {
+        model = LDS_EM(y, u, v, init[i], niter, tol);
+        theta = model["theta"];
+        NumericMatrix C = theta["C"];
+        lik = model["lik"];
+        if (C(0, 0) > 0) {
+            if (lik > pos_lik) {
+                pos_lik = lik;
+                pos_model = model;
+                pos_best_idx = i;
+            }
+        } else {
+            if (lik > neg_lik) {
+                neg_lik = lik;
+                neg_model = model;
+                neg_best_idx = i;
+            }
+        }
+    }
+    // Select the model with highest likelihood
+    // Only select models with C > 0 for physical interpretation (if possible)
+    if (pos_lik > R_NegInf) {
+        model = pos_model;
+        if (return_init) {
+            model.push_back(init[pos_best_idx], "init");
+        }
+    } else {
+        model = neg_model;
+        if (return_init) {
+            model.push_back(init[neg_best_idx], "init");
+        }
+    }
+    return model;
 }
 
 //' State propagation
@@ -343,8 +390,8 @@ List propagate(List theta, arma::mat u, arma::mat v, arma::mat y, bool stdlik = 
 
     if (stdlik) lik = lik / n_obs;
 
-    return List::create(Named("X") = Xp,
-                        Named("Y") = Yp,
-                        Named("V") = Vp,
-                        Named("lik") = lik);
+    return List::create(_["X"] = Xp,
+                        _["Y"] = Yp,
+                        _["V"] = Vp,
+                        _["lik"] = lik);
 }
