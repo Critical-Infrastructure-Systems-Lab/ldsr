@@ -1,10 +1,12 @@
-#' Make a list of initial parameter values for the search
+#' Make initial values for parameters.
 #'
-#' If init is a vector, make it a list
-#' If init is NULL, randomize it
+#' If init is a vector, make it a list of one element.
+#' If init is NULL, randomize it. In this case, the function will randomize the initial value by sampling uniformly within the range for each parameters
+#' (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
 #' @param d Dimension of input
 #' @param num.restarts Number of randomized initial conditions
-#' @return A list of iniial conditions
+#' @return A list of initial conditions
+#' @export
 make_init <- function(d, num.restarts) {
 
   replicate(num.restarts,
@@ -14,23 +16,47 @@ make_init <- function(d, num.restarts) {
             simplify = F)
 }
 
-#' Learn LDS model with multiple initial conditions. This function can be called directly or wrapped in [LDS_ensemble]
+#' Call a reconstruction method
+#'
+#' Call a reconstruction method subroutine according to the method required
+#' @inheritParams LDS_reconstruction
+#' @return The results as produced by `LDS_EM_restart()` when the default method (EM) is called. Other methods are experimental.
+
+call_method <- function(y, u, v, method, init, num.restarts, return.init,
+                        ub, lb, num.islands, pop.per.island,
+                        niter, tol) {
+  # Reconstruction with the supplied method
+  switch(method,
+         EM = LDS_EM_restart(y, u, v, init, niter, tol, return.init),
+         GA = LDS_GA(y, u, v, ub, lb, num.islands, pop.per.island,
+                     niter, parallel = FALSE),
+         BFGS = LDS_BFGS(y, u, v, ub, lb, num.restarts, parallel = FALSE),
+         BFGS_smooth = {
+           fit1 <- LDS_BFGS(y, u, v, ub, lb, num.restarts, parallel = FALSE)
+           fit2 <- ldsr:::Kalman_smoother(y, u, v, fit1$theta)
+           fit1$fit <- fit2
+           fit1$lik <- fit2$lik
+           fit1
+         })
+}
+
+#' Learn LDS model.
 #'
 #' The initial conditions can either be randomized (specifiled by num.restarts) or provided beforehand.
-#' @param Qa Observations: a data.table of annual streamflow with at least two columns: year and Qa.
+#' @inheritParams PCR_reconstruction
 #' @inheritParams LDS_EM_restart
-#' @param start.year Starting year of the paleo period. `start.year + ncol(u) - 1` will determine the last year of the study horizon, which must be greater than or equal to the last year in `Qa`.
-#' @param method Either EM or GA (note: GA is experimental)
-#' @param trans Transformatin of flow before model fitting, can be either "log", "boxcox" or "none".
-#' @param num.restarts if init is not given then num.restarts must be provided. In this case the function
-#' will randomize the initial value by sampling uniformly within the range for each parameters
-#' (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
+#' @param u Input matrix for a single-model reconstruction, or a list of input matrices for an ensemble reconstruction.
+#' @param v Same as u.
+#' @param method By default this is "EM". There are experimental methods but you should not try.
+#' @param init A list, each element is a vector of initial values for the parameters. If `NULL`, will be created by `make_init()`. See [make_init] for details.
+#' @param num.restarts The number of initial conditions to start the EM search; ignored if `init` is provided.
+#' @param return.init If `TRUE`, the list of initial values (`init`) will be returned. This can be useful if you want to reproduce the model from this one set of initial values.
 #' @param ub Upper bounds, a vector whose length is the number of parameters
 #' @param lb Lower bounds
-#' @param return.raw If TRUE, state and streamflow estimates without measurement updates will be returned.
-#' @param lambda Weight for penalty term (if method is not EM; experimental)
 #' @param num.islands Number of islands (if method is GA; experimental)
 #' @param pop.per.island Initial population per island (if method is GA; experimental)
+#' @param return.raw If TRUE, state and streamflow estimates without measurement updates will be returned.
+#' @param nb.cores Number of cores to perform the reconstruction. Default is 1 for serial computation. If `nb.cores > 1`, parallel computation will be performed using the `doFuture` backend.
 #' @return A list of the following elements
 #' * rec: reconstruction results, a data.table with the following columns
 #'     - year: calculated from Qa and the length of u
@@ -40,320 +66,223 @@ make_init <- function(d, num.restarts) {
 #'     - Ql, Qu: lower and upper range for the 95\% confidence interval of Q
 #' * theta: model parameters
 #' * lik: maximum likelihood
-#' * init: the initial condition that resulted in the maximum likelihood (if )
+#' * init: the initial condition that resulted in the maximum likelihood (if `return.init = TRUE`).
 #' @export
-LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
-                               init = NULL, num.restarts = 100, return.init = TRUE,
-                               lambda = 1, ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
+LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 'log',
+                               init = NULL, num.restarts = 50, return.init = FALSE,
+                               ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
                                niter = 1000, tol = 1e-5, return.raw = FALSE,
-                               parallel = TRUE, all.cores = FALSE) {
+                               nb.cores = 1) {
 
+  # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
-  if (method != 'EM' && (is.null(ub) || is.null(lb)))
-    stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
-
-  if (trans == 'log')
-    Q.trans <- log(Qa$Qa)
-  else if (trans == 'boxcox') {
-    lambda <- car::powerTransform(Qa$Qa ~ 1)$roundlam %>% 'names<-'('lambda')
-    Q.trans <- car::bcPower(Qa$Qa, lambda)
-  } else if (trans == 'none')
-    Q.trans <- Qa$Qa
-  else stop('Accepted transformations are "log", "boxcox" and "none"')
-
-  if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
-
-  N <- ncol(u)
+  single <- !is.list(u)
+  N <- if (single) ncol(u) else ncol(u[[1]])
+  p <- if( single) nrow(u) else nrow(u[[1]])
   end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
     stop('The last year of u is earlier than the last year of the instrumental period.')
 
+  y <- Qa$Qa
+  if (transform == 'log') {
+    y <- log(y)
+  } else if (transform == 'boxcox') {
+    bc <- MASS::boxcox(y ~ 1, plotit = FALSE)
+    lambda <- bc$x[which.max(bc$y)]
+    y <- (y^lambda - 1) / lambda
+  } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, and set transform = "none".')
+
+  years <- start.year:end.year
+
+  if (method != 'EM' && (is.null(ub) || is.null(lb)))
+    stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
+
+  if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
+
   # Attach NA and make the y matrix
-  mu <- mean(Q.trans, na.rm = TRUE)
+  mu <- mean(y, na.rm = TRUE)
   y <- t(c(rep(NA, Qa[1, year] - start.year), # Before the instrumental period
-           Q.trans - mu,     # Instrumental period
-           rep(NA, end.year - Qa[.N, year])))
+           y - mu,     # Instrumental period
+           rep(NA, end.year - Qa[.N, year]))) # After the instrumental period
 
   if (is.null(init)) {
-    init <- make_init(nrow(u), num.restarts)
-  } else if (!is.list(init)) init <- list(init)
-  results <- switch(method,
-                    EM = LDS_EM_restart(y, u, v, init, niter, tol, return.init, parallel, all.cores),
-                    GA = LDS_GA(y, u, v, lambda, ub, lb, num.islands, pop.per.island, niter, parallel),
-                    BFGS = LDS_BFGS(y, u, v, ub, lb, num.restarts, parallel),
-                    BFGS_smooth = {
-                      fit1 <- LDS_BFGS(y, u, v, ub, lb, num.restarts = 1000)
-                      fit2 <- ldsr:::Kalman_smoother(y, u, v, fit1$theta)
-                      fit1$fit <- fit2
-                      fit1$lik <- fit2$lik
-                      fit1
-                    },
-                    stop("Method undefined. It has to be either EM, GA or BFGS."))
+    init <- make_init(p, num.restarts)
+  } else if (!is.list(init)) init <- list(init) # One initial condition only
 
-  tidy_rec <- function(X, V, Y, theta, trans, years) {
+  if (!(method %in% c('EM', 'GA', 'BFGS', 'BFGS_smooth'))) stop("Method undefined. It has to be either EM, GA, BFGS or BFGS_smooth.")
+
+  # Subroutines ------------------------------------------------------------------
+
+  construct_rec <- function(fit, theta, mu, transform, years) {
+    # Convert Y to Q and calculate confidence intervals
+    X <- as.vector(fit$X)
+    V <- as.vector(fit$V)
+    Y <- as.vector(fit$Y + mu)
     # Confidence intervals
     CI.X <- 1.96 * sqrt(V)
     CI.Y <- 1.96 * (as.vector(theta$C) * V * as.vector(theta$C) + as.vector(theta$R))
 
-    X.out <- data.table(year = years,
-                        X = X,
-                        Xl = X - CI.X,
-                        Xu = X + CI.X)
-    Q.out <- data.table(Q = Y,
-                        Ql = Y - CI.Y,
-                        Qu = Y + CI.Y)
-    if (trans == 'log') {
+    X.out <- data.table(year = years, X = X, Xl = X - CI.X, Xu = X + CI.X)
+    Q.out <- data.table(Q = Y, Ql = Y - CI.Y, Qu = Y + CI.Y)
+    if (transform == 'log') {
       Q.out <- exp(Q.out)
-    } else if (trans == 'boxcox') {
-        if (lambda == 0) Q.out <- exp(Q.out) else Q.out <- (Q.out*lambda + 1)^(1/lambda)
+    } else if (transform == 'boxcox') {
+      if (lambda == 0) Q.out <- exp(Q.out) else Q.out <- (Q.out*lambda + 1)^(1/lambda)
     }
     cbind(X.out, Q.out)
   }
-  # Construct 95% confidence intervals and return
-  years <- start.year : end.year
-  with(results, {
 
-    rec <- tidy_rec(as.vector(fit$X),
-                    as.vector(fit$V),
-                    as.vector(fit$Y + mu),
-                    theta, trans, years)
-    ans <- list(rec = rec, theta = theta, lik = lik)
-    if (return.raw) {
-      # Return time series without measurement updates.
-      # Note that we are unable to estimate confidence interval in this case
-      X2 <- rep(0, N)
-      V2 <- rep(0, N)
-      V2[1] <- fit$V[1]
-      for (t in 2:N) {
-        X2[t] <- theta$A %*% X2[t - 1] + theta$B %*% u[, t - 1]
-        V2[t] <- theta$A*V2[t]*theta$A + theta$Q
+  format_results <- function(results, u, v) {
+    with(results, {
+      rec <- construct_rec(fit, theta, mu, transform, years)
+      ans <- list(rec = rec, theta = theta, lik = lik)
+      if (return.raw) {
+        raw <- propagate(theta, u, v, y)
+        ans$rec2 <- construct_rec(raw, theta, mu, transform, years)
       }
-      Y2 <- as.vector(theta$C) * X2 + as.vector(theta$D %*% u) + mu
-      ans$rec2 <- tidy_rec(X2, V2, Y2, theta, trans, years)
+
+      if (return.init) ans$init <- results$init
+      if (method != 'EM') ans$pl <- results$pl
+      if (transform == 'boxcox') ans$lambda <- lambda
+      ans
+    })
+  }
+
+  # Reconstruction ----------------------------------------------------------
+
+  if (single) {
+    # For single model, we can parallelize at the init level
+    results <- call_method(y, u, v, method, init, num.restarts, return.init,
+                           ub, lb, num.islands, pop.per.island, niter, tol)
+    format_results(results, u, v)
+  } else {
+    # Otherwise, we can parallelize at the u level
+
+    ensemble <- foreach(i = seq_along(u), .packages = 'ldsr') %dopar% {
+      results <- call_method(y, u[[i]], v[[i]], method, init, num.restarts, return.init,
+                             ub, lb, num.islands, pop.per.island, niter, tol)
+      format_results(results, u[[i]], v[[i]])
     }
 
-    if (return.init) ans$init <- results$init
-    if (method != 'EM') ans$pl <- results$pl
-    if (trans == 'boxcox') ans$lambda <- lambda
+    rec <- rbindlist(lapply(ensemble, function(x) x$rec[, .(year, X, Q)]))
+    rec <- rec[, .(X = mean(X), Q = mean(Q)), by = year]
+    ans <- list(rec = rec, ensemble = ensemble)
+
+    if (return.raw) {
+      rec.raw <- rbindlist(lapply(ensemble, function(x) x$rec2[, .(year, X, Q)]))
+      rec.raw <- rec.raw[, .(X = mean(X), Q = mean(Q)), by = year]
+      ans$rec.raw <- rec.raw
+    }
     ans
-  })
+  }
 }
 
-#' Ensemble reconstruction. This is a wrapper for [LDS_reconstruction].
+#' One cross-validation run
 #'
-#' @param u.list List of u matrices
-#' @param v.list List of v matrices
+#' Make one prediction for one cross-validation run. This is a subroutine to be called by other cross-validation functions.
+#' @param z A vector of left-out points, indexed according to the intrumental period
+#' @param instPeriod indices of the instrumental period in the whole record
 #' @inheritParams LDS_reconstruction
-#' @return A list of models in the ensemble
+#' @return A vector of prediction.
 #' @export
-LDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 'log',
-                         init = NULL, num.restarts = 100,
-                         lambda = 1, ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
-                         niter = 1000, tol = 1e-5, return.raw = FALSE,
-                         parallel = TRUE, all.cores = FALSE) {
+one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, num.restarts = 20,
+                       ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100, niter = 1000, tol = 1e-6) {
 
-  # Non-standard call issue in R CMD check
-  i <- member <- Q <- X <- NULL
-
-  Qa <- as.data.table(Qa)
-  if (length(u.list) != length(v.list))
-    stop("Length of u and v lists must be the same.")
-
-  if (parallel) {
-    nbCores <- detectCores() - { if (all.cores) 0 else 1 }
-    cl <- makeCluster(nbCores)
-    registerDoParallel(cl)
-    ensemble.full <- foreach(i = 1:length(u.list)) %dopar%
-      LDS_reconstruction(Qa, u.list[[i]], v.list[[i]], start.year, method, trans,
-                         init, num.restarts, return.init = FALSE,
-                         lambda, ub, lb, num.islands, pop.per.island,
-                         niter, tol, return.raw, parallel = FALSE)
-    stopCluster(cl)
-  } else {
-    ensemble.full <- mapply(LDS_reconstruction, u = u.list, v = v.list,
-                            MoreArgs = list(
-                              Qa = Qa, start.year = start.year, method = method, trans = trans,
-                              init = init, num.restarts = num.restarts, return.init = FALSE,
-                              lambda = lambda, ub = ub, lb = lb,
-                              num.islands = num.islands, pop.per.island = pop.per.island,
-                              niter = niter, tol = tol, return.raw = return.raw,
-                              parallel = FALSE
-                            ),
-                            SIMPLIFY = FALSE)
-  }
-
-  ensemble <- rbindlist(lapply(ensemble.full, '[[', 'rec'))
-  ensemble[, member := 1:.N, by = year]
-
-  rec <- ensemble[, list(Q = mean(Q)), by = year]
-  Xstd <- ensemble[, list(year, X = X / sd(X)), by = member
-                 ][, list(X = mean(X)), by = year
-                 ][, X]
-  rec[, X := Xstd]
-
-  ans <- list(rec = rec[],
-              ensemble = ensemble,
-              theta = lapply(ensemble.full, '[[', 'theta'))
-
-  if (return.raw) {
-    ensemble.raw <- rbindlist(lapply(ensemble.full, '[[', 'rec2'))
-    ensemble.raw[, member := 1:.N, by = year]
-
-    rec.raw <- ensemble.raw[, list(Q = mean(Q)), by = year]
-    Xstd.raw <- ensemble.raw[, list(year, X = X / sd(X)), by = member
-                           ][, list(X = mean(X)), by = year
-                           ][, X]
-    rec.raw[, X := Xstd.raw]
-
-    ans$rec.raw <- rec.raw
-    ans$ensemble.raw <- ensemble.raw
-  }
-
-  ans
+  y[instPeriod][z] <- NA
+  result <- call_method(y, u, v, method, init, num.restarts, return.init = FALSE,
+                        ub, lb, num.islands, pop.per.island,
+                        niter, tol)
+  as.vector(result$fit$Y[instPeriod]) + mu
 }
+
 
 #' Cross validate LDS model. This is a wrapper for [LDS_reconstruction]
 #'
 #' @inheritParams LDS_reconstruction
-#' @param k Numer of data points to be left out in each cross validation-run.
-#' @param CV.reps Number of cross-validation runs.
-#' @param Z A list of CV.reps elements, each is a vector of length k. See Details.
-#' @details Allows different experimental setups:
-#'   * init: if given, all cross validation runs start with the same init, otherwise each cross validation run is learned using randomized restarts.
-#'   * Z: If given, cross validation will be run on these points (useful when comparing LDS with another reconstruction method); otherwise, randomized cross validation points will be created.
+#' @inheritParams cvPCR
 #' @export
- cvLDS <- function(Qa, u, v, start.year, method = 'EM', trans = 'log',
-                  k, CV.reps = 100, Z = NULL,
-                  init = NULL, num.restarts = 100,
-                  lambda = 1, ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100,
-                  niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
+ cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log',
+                   init = NULL, num.restarts = 100,
+                   Z = NULL, metric.space = 'transformed',
+                   ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100,
+                   niter = 1000, tol = 1e-5) {
 
-  # Non-standard call issue in R CMD check
-  Q <- omit <- NULL
-
+  # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
-  obs.ind <- which(!is.na(Qa$Qa))
-  n.obs <- length(obs.ind)
-  if (missing(k)) k <- ceiling(n.obs / 10)
-  # Z: index in instrumental period
+  single <- !is.list(u)
+  if (single) {
+    if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
+    N <- ncol(u)
+    p <- nrow(u)
+  } else {
+    if (!identical(sapply(u, dim), sapply(v, dim))) stop('Dimensions of u and v must be the same.')
+    N <- ncol(u[[1]])
+    p <- nrow(u[[1]])
+  }
+  end.year <- start.year + N - 1
+  if (end.year < Qa[.N, year])
+    stop('The last year of pc is earlier than the last year of the instrumental period.')
+
+  if (method != 'EM' && (is.null(ub) || is.null(lb)))
+    stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
+
+  if (is.null(init)) {
+    init <- make_init(p, num.restarts)
+  } else if (!is.list(init)) init <- list(init) # One initial condition only
+
+  obs <- Qa$Qa
+  if (transform == 'log') {
+    obs <- log(obs)
+  } else if (transform == 'boxcox') {
+    bc <- MASS::boxcox(obs ~ 1, plotit = FALSE)
+    lambda <- bc$x[which.max(bc$y)]
+    obs <- (obs^lambda - 1) / lambda
+  } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, with transform = "none".')
+
   if (is.null(Z)) {
-    Z <- replicate(CV.reps, sample(obs.ind, k), simplify = FALSE)
+    Z <- make_Z(obs)
   } else {
-    CV.reps <- length(Z)
-  }
-  # ub and lb must be passed through to one_Cv, otherwise parallel run will produce an erroo.
-  if (method == 'EM') ub <- lb <- NULL
-
-  one_CV <- function(omit, Qa, u, v, start.year, method, trans, init, num.restarts,
-                     lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
-
-    # Don't change Qa so that we can still calculate metrics later
-    Qa2 <- copy(Qa)[omit, Qa := NA]
-    # Parallel is run at the outer loop, i.e. for each cross-validation run
-    ans <- LDS_reconstruction(Qa2, u, v, start.year, method, trans, init, num.restarts, return.init = FALSE,
-                              lambda, ub, lb, num.islands, pop.per.island, niter, tol,
-                              parallel = FALSE)
-
-    Qa.hat <- ans$rec[year %in% Qa$year, Q]
-    metric <- calculate_metrics(Qa.hat, Qa$Qa, omit)
-
-    list(metric = metric, Ycv = Qa.hat)
+    if (!is.list(Z)) stop("Please provide the cross-validation folds (Z) in a list.")
   }
 
-  if (parallel)  {
-    nbCores <- detectCores() - { if (all.cores) 0 else 1 }
-    cl <- makeCluster(nbCores)
-    registerDoParallel(cl)
-    cv.results <- foreach(omit = Z) %dopar%
-      one_CV(omit, Qa, u, v, start.year, method, trans, init, num.restarts,
-             lambda, ub, lb, num.islands, pop.per.island, niter, tol)
-    stopCluster(cl)
+  years <- start.year:end.year
+  instPeriod <- which(years %in% Qa$year)
+
+  # Attach NA and make the y matrix
+  mu <- mean(obs, na.rm = TRUE)
+  y <- t(c(rep(NA, Qa[1, year] - start.year), # Before the instrumental period
+           obs - mu,     # Instrumental period
+           rep(NA, end.year - Qa[.N, year]))) # After the instrumental period
+
+  Ycv <- if (single) {
+    foreach(z = Z, .packages = 'ldsr') %dopar%
+      one_lds_cv(z, instPeriod, mu, y, u, v, method, init, num.restarts,
+                 ub, lb, num.islands, pop.per.island, niter, tol)
   } else {
-    cv.results <- lapply(Z, function(omit)
-      one_CV(omit, Qa, u, v, start.year, method, trans, init, num.restarts,
-             lambda, ub, lb, num.islands, pop.per.island, niter, tol))
+    foreach(z = Z, .packages = 'ldsr') %:%
+      foreach(i = seq_along(u),
+              .combine = cbind, .multicombine = TRUE, .final = rowMeans) %dopar%
+        one_lds_cv(z, instPeriod, mu, y, u[[i]], v[[i]], method, init, num.restarts,
+                   ub, lb, num.islands, pop.per.island, niter, tol)
   }
 
-  metrics.dist <- rbindlist(lapply(cv.results, '[[', 'metric'))
-  Ycv <- as.data.table(sapply(cv.results, '[[', 'Ycv'))
-  Ycv$year <- Qa$year
-  Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
-
-  return(list(metrics = colMeans(metrics.dist[, 1:5]),
-              metrics.dist = metrics.dist,
-              Ycv = Ycv,
-              Z = Z))
-}
-
-#' Cross validatdion for ensemble reconstruction. This is a wrapper for [cvLDS].
-#'
-#' @param u.list List of u matrices
-#' @param v.list List of v matrices#'
-#' @inheritParams cvLDS
-#' @return same as cvLDS
-#' @export
-cvLDS_ensemble <- function(Qa, u.list, v.list, start.year, method = 'EM', trans = 'log',
-                           k, CV.reps = 100, Z = NULL,
-                           init = NULL, num.restarts = 100,
-                           lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100,
-                           niter = 1000, tol = 1e-5, parallel = TRUE, all.cores = FALSE) {
-
-  # Non-standard call issue in R CMD check
-  Q <- omit <- NULL
-
-  Qa <- as.data.table(Qa)
-  if (length(u.list) != length(v.list))
-    stop("Length of u and v lists must be the same.")
-
-  obs.ind <- which(!is.na(Qa$Qa))
-  n.obs <- length(obs.ind)
-  if (missing(k)) k <- ceiling(n.obs / 10)
-  # Z: index in instrumental period
-  if (is.null(Z)) {
-    Z <- replicate(CV.reps, sample(obs.ind, k), simplify = FALSE)
+  if (metric.space == 'original') {
+    if (transform == 'log') {
+      Ycv <- lapply(Ycv, exp)
+    } else if (transform == 'boxcox') {
+      Ycv <- lapply(Ycv, function(x) (x*lambda + 1)^(1/lambda))
+    }
+    metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = Qa$Qa))
   } else {
-    CV.reps <- length(Z)
+    metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = obs))
   }
-  # ub and lb must be passed through to one_Cv, otherwise parallel run will produce an erroo.
-  if (method == 'EM') ub <- lb <- NULL
+  # doing mapply is a lot faster than working on data.table
 
-  one_CV_ensemble <- function(omit, Qa, u.list, v.list, start.year, method, trans, init, num.restarts,
-                              lambda, ub, lb, num.islands, pop.per.island, niter, tol) {
+  setDT(Ycv)
 
-    # Don't change Qa so that we can still calculate metrics later
-    Qa2 <- copy(Qa)[omit, Qa := NA]
-    # Parallel is run at the outer loop, i.e. for each cross-validation run
-    ans <- LDS_ensemble(Qa2, u.list, v.list, start.year, method, trans, init, num.restarts,
-                        lambda, ub, lb, num.islands, pop.per.island, niter, tol,
-                        return.raw = FALSE, parallel = FALSE)
-
-    Qa.hat <- ans$rec[year %in% Qa$year, Q]
-    metric <- calculate_metrics(Qa.hat, Qa$Qa, omit)
-
-    list(metric = metric, Ycv = Qa.hat)
-  }
-
-  if (parallel)  {
-    nbCores <- detectCores() - { if (all.cores) 0 else 1 }
-    cl <- makeCluster(nbCores)
-    registerDoParallel(cl)
-    cv.results <- foreach(omit = Z) %dopar%
-      one_CV_ensemble(omit, Qa, u.list, v.list, start.year, method, trans, init, num.restarts,
-                      lambda, ub, lb, num.islands, pop.per.island, niter, tol)
-    stopCluster(cl)
-  } else {
-    cv.results <- lapply(Z, function(omit)
-      one_CV_ensemble(omit, Qa, u.list, v.list, start.year, method, trans, init, num.restarts,
-                      lambda, ub, lb, num.islands, pop.per.island, niter, tol))
-  }
-
-  metrics.dist <- rbindlist(lapply(cv.results, '[[', 'metric'))
-  Ycv <- as.data.table(sapply(cv.results, '[[', 'Ycv'))
-  Ycv$year <- Qa$year
-  Ycv <- melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Qa')
-
-  return(list(metrics = colMeans(metrics.dist[, 1:5]),
-              metrics.dist = metrics.dist,
-              Ycv = Ycv,
-              Z = Z))
+  list(metrics.dist = t(metrics.dist),
+       metrics = rowMeans(metrics.dist),
+       obs = data.table(year = Qa$year, y = obs),
+       Ycv = Ycv,
+       Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
 }
