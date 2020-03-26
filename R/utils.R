@@ -58,9 +58,10 @@ water_to_calendar_year <- function(df, dt, keep.all = FALSE) {
 #' @param sim A vector of reconstruction output for instrumental period
 #' @param obs A vector of all observations
 #' @param z A vector of left out indices in cross validation
+#' @param norm.fun The function (unquoted name) used to calculate the normalizing constant. Default is `mean()`, but other functions such as `sd()` can also be used. THe function must take a vector as input and return a scalar as output, and must have an argument `na.rm = TRUE`.
 #' @return A named vector of performance metrics
 #' @export
-calculate_metrics <- function(sim, obs, z) {
+calculate_metrics <- function(sim, obs, z, norm.fun = mean) {
     train.sim <- sim[-z]
     train.sim <- train.sim[!is.na(train.sim)]
     train.obs <- obs[-z]
@@ -71,7 +72,7 @@ calculate_metrics <- function(sim, obs, z) {
     c(R2    = NSE(train.sim, train.obs), # Use the NSE form of R2
       RE    = RE(val.sim, val.obs, mean(train.obs)),
       CE    = NSE(val.sim, val.obs),
-      nRMSE = nRMSE(val.sim, val.obs, mean(obs, na.rm = TRUE)),
+      nRMSE = nRMSE(val.sim, val.obs, norm.fun(obs, na.rm = TRUE)),
       KGE   = KGE(val.sim, val.obs)
     )
 }
