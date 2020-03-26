@@ -100,7 +100,7 @@ one_pcr_cv <- function(df, z) {
 #' * Ycv: the predicted streamflow in each cross validation run; a matrix, one column for each cross-validation run
 #' * Z: the cross-validation folds
 #' @export
-cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL) {
+cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space = 'transformed') {
 
   # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
@@ -141,16 +141,18 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL) {
     if (transform == 'log') {
       Ycv <- lapply(Ycv, exp)
     } else if (transform == 'boxcox') {
-      Ycv <- lapply(Ycv, function(x) (x^lambda + 1)^(1/lambda))
+      Ycv <- lapply(Ycv, function(x) (x*lambda + 1)^(1/lambda))
     }
+    metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = Qa$Qa))
+    obs <- Qa
+  } else {
+    metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = y))
+    obs <- data.table(year = Qa$year, y = y)
   }
-  metrics.dist <- mapply(calculate_metrics,
-                         sim = Ycv, z = Z,
-                         MoreArgs = list(obs = y))
   setDT(Ycv)
   list(metrics.dist = t(metrics.dist),
        metrics = rowMeans(metrics.dist),
-       obs = data.table(year = Qa$year, y = y),
+       obs = obs,
        Ycv = Ycv,
        Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
 }
