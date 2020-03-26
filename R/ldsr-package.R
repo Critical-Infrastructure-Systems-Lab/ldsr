@@ -4,9 +4,7 @@
 #' @docType package
 #' @name ldsr
 #' @import data.table
-#' @importFrom doParallel registerDoParallel
 #' @importFrom foreach foreach %dopar% %:%
-#' @importFrom parallel detectCores makeCluster stopCluster
 #' @importFrom Rcpp evalCpp sourceCpp
 #' @useDynLib ldsr, .registration = TRUE
 #' @keywords internal
