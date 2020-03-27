@@ -202,7 +202,7 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
 #' @inheritParams cvPCR
 #' @export
  cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log',
-                   init = NULL, num.restarts = 100,
+                   init = NULL, num.restarts = 50,
                    Z = NULL, metric.space = 'transformed',
                    ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100,
                    niter = 1000, tol = 1e-5) {
@@ -272,17 +272,20 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
     } else if (transform == 'boxcox') {
       Ycv <- lapply(Ycv, function(x) (x*lambda + 1)^(1/lambda))
     }
-    metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = Qa$Qa))
+    target <- Qa$Qa
   } else {
-    metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = obs))
+    target <- obs
   }
   # doing mapply is a lot faster than working on data.table
+  metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = target))
 
-  setDT(Ycv)
+  names(Ycv) <- seq_along(Ycv)
+  setDT(Ycv, check.names = FALSE)
+  Ycv[, year := Qa$year]
 
   list(metrics.dist = t(metrics.dist),
        metrics = rowMeans(metrics.dist),
-       obs = data.table(year = Qa$year, y = obs),
-       Ycv = Ycv,
+       target = data.table(year = Qa$year, y = target),
+       Ycv = melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Y'),
        Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
 }
