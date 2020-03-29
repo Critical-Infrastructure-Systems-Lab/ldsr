@@ -186,13 +186,18 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
 #' @return A vector of prediction.
 #' @export
 one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, num.restarts = 20,
-                       ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100, niter = 1000, tol = 1e-6) {
+                       ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100, niter = 1000, tol = 1e-6, use.raw = FALSE) {
 
   y[instPeriod][z] <- NA
   result <- call_method(y, u, v, method, init, num.restarts, return.init = FALSE,
                         ub, lb, num.islands, pop.per.island,
                         niter, tol)
-  as.vector(result$fit$Y[instPeriod]) + mu
+  if (use.raw) {
+    raw <- propagate(result$theta, u, v, y)
+    as.vector(raw$Y[instPeriod]) + mu
+  } else {
+    as.vector(result$fit$Y[instPeriod]) + mu
+  }
 }
 
 
@@ -203,7 +208,7 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
 #' @export
  cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log',
                    init = NULL, num.restarts = 50,
-                   Z = NULL, metric.space = 'transformed',
+                   Z = NULL, metric.space = 'transformed', use.raw = FALSE,
                    ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100,
                    niter = 1000, tol = 1e-5) {
 
@@ -257,13 +262,13 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
   Ycv <- if (single) {
     foreach(z = Z, .packages = 'ldsr') %dopar%
       one_lds_cv(z, instPeriod, mu, y, u, v, method, init, num.restarts,
-                 ub, lb, num.islands, pop.per.island, niter, tol)
+                 ub, lb, num.islands, pop.per.island, niter, tol, use.raw)
   } else {
     foreach(z = Z, .packages = 'ldsr') %:%
       foreach(i = seq_along(u),
               .combine = cbind, .multicombine = TRUE, .final = rowMeans) %dopar%
         one_lds_cv(z, instPeriod, mu, y, u[[i]], v[[i]], method, init, num.restarts,
-                   ub, lb, num.islands, pop.per.island, niter, tol)
+                   ub, lb, num.islands, pop.per.island, niter, tol, use.raw)
   }
 
   if (metric.space == 'original') {
