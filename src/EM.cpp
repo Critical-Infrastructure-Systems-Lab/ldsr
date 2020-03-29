@@ -270,63 +270,6 @@ List LDS_EM(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter = 1
                         _["lik"] = fit["lik"]); // return the final likelihood for convenient access
 }
 
-//' Learn LDS model with multiple initial conditions
-//'
-//' This is the backend computation for [LDS_reconstruction].
-//' @inheritParams LDS_EM
-//' @param niter Maximum number of iterations, default 1000.
-//' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
-//' @return a list as produced by [LDS_EM].
-// [[Rcpp::export]]
-List LDS_EM_restart_C(arma::mat y, arma::mat u, arma::mat v, List init, int niter = 1000, double tol = 1e-5, bool return_init = false) {
-
-    // Build models and keep the ones with the maximum likelihood, one for positive C, one for negative C
-    double pos_lik = R_NegInf; // likelihood for positive C
-    double neg_lik = R_NegInf; // likelihood for negative C
-    double lik;
-    int pos_best_idx;
-    int neg_best_idx;
-
-    List pos_model; // best model for postive C
-    List neg_model; // best model for negative C
-    List model;
-    List theta;
-
-    for (int i = 0; i < init.length(); i++) {
-        model = LDS_EM(y, u, v, init[i], niter, tol);
-        theta = model["theta"];
-        NumericMatrix C = theta["C"];
-        lik = model["lik"];
-        if (C(0, 0) > 0) {
-            if (lik > pos_lik) {
-                pos_lik = lik;
-                pos_model = model;
-                pos_best_idx = i;
-            }
-        } else {
-            if (lik > neg_lik) {
-                neg_lik = lik;
-                neg_model = model;
-                neg_best_idx = i;
-            }
-        }
-    }
-    // Select the model with highest likelihood
-    // Only select models with C > 0 for physical interpretation (if possible)
-    if (pos_lik > R_NegInf) {
-        model = pos_model;
-        if (return_init) {
-            model.push_back(init[pos_best_idx], "init");
-        }
-    } else {
-        model = neg_model;
-        if (return_init) {
-            model.push_back(init[neg_best_idx], "init");
-        }
-    }
-    return model;
-}
-
 //' State propagation
 //'
 //' This function propagates the state trajectory based on the exogenous inputs only
