@@ -145,7 +145,7 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
     }
     target <- Qa$Qa
   } else {
-    target <- obs
+    target <- y
   }
   # doing mapply is a lot faster than working on data.table
   metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = target))
