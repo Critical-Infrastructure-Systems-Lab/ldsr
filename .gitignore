@@ -10,6 +10,8 @@ man/
 src/*.o
 src/*.so
 src/*.dll
+src/RcppExports.cpp
+R/RcppExports.R
 src-i386
 src-x64
 experiments
