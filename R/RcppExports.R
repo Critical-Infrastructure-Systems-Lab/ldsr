@@ -37,8 +37,8 @@ Mstep <- function(y, u, v, fit) {
 #' * fit: results of Estep
 #' * liks : vector of loglikelihood over the iteration steps
 #' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
-LDS_EM <- function(y, u, v, init, niter = 1000L, tol = 1e-5) {
-    .Call(`_ldsr_LDS_EM`, y, u, v, init, niter, tol)
+LDS_EM <- function(y, u, v, theta, niter = 1000L, tol = 1e-5) {
+    .Call(`_ldsr_LDS_EM`, y, u, v, theta, niter, tol)
 }
 
 #' State propagation
