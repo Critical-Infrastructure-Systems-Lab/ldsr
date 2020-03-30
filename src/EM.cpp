@@ -47,7 +47,11 @@ List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool std
     // Remember C++ starts from 0
     Xp.col(0) = x1;
     Vp.col(0) = V1;
-    Yp.col(0) = C * Xp.col(0) + D * v.col(0);
+    if (v.n_cols == 1) {
+        Yp.col(0) = C * Xp.col(0);
+    } else {
+        Yp.col(0) = C * Xp.col(0) + D * v.col(0);
+    }
 
     // Posterior t|t, u stands for updated
     Xu.zeros(1, T);
@@ -66,8 +70,11 @@ List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool std
     for (int t=1; t<T; t++) {
         Xp.col(t) = A * Xu.col(t-1) + B * u.col(t-1);
         Vp.col(t) = A * Vu.col(t-1) * A + Q;
-        Yp.col(t) = C * Xp.col(t) + D * v.col(t);
-
+        if (v.n_cols == 1) {
+            Yp.col(t) = C * Xp.col(t);
+        } else {
+            Yp.col(t) = C * Xp.col(t) + D * v.col(t);
+        }
         if (NumericMatrix::is_na(y(0,t))) {
             Xu.col(t) = Xp.col(t);
             Vu.col(t) = Vp.col(t);
@@ -92,7 +99,11 @@ List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool std
         // Cov.col(t) = Vs.col(t+1)*J;
     }
     // Final prediction
-    Ys = C*Xs + D*v;
+    if (v.n_cols == 1) {
+        Ys = C*Xs;
+    } else {
+        Ys = C*Xs + D*v;
+    }
 
     // Likelihood using the incomplete form, see equation (A.9) of Cheng and Sabes (2006)
     uvec obs = find_finite(y);  // Find indices where there are observations
@@ -132,19 +143,27 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
     // C and D ================================
     // Sum for observed part
     mat Syx = y.cols(obs) * trans(X.cols(obs));
-    mat Syv = y.cols(obs) * trans(v.cols(obs));
     mat Sxx = X.cols(obs) * trans(X.cols(obs)) + accu(V.cols(obs));
-    mat Sxv = X.cols(obs) * trans(v.cols(obs));
-    mat Svx = trans(Sxv);
-    mat Svv = v.cols(obs) * trans(v.cols(obs));
+    mat C(1, 1);
+    mat D(1, d);
 
-    // Solve linear system
-    mat P1 = join_horiz(Syx, Syv);
-    mat P2 = join_vert(join_horiz(Sxx, Sxv), join_horiz(Svx, Svv));
-    mat P  = P1 * inv(P2);
+    if (v.n_cols > 1) {
+        mat Syv = y.cols(obs) * trans(v.cols(obs));
+        mat Sxv = X.cols(obs) * trans(v.cols(obs));
+        mat Svx = trans(Sxv);
+        mat Svv = v.cols(obs) * trans(v.cols(obs));
 
-    mat C = P.col(0);
-    mat D = P.cols(1, d);
+        // Solve linear system
+        mat P1 = join_horiz(Syx, Syv);
+        mat P2 = join_vert(join_horiz(Sxx, Sxv), join_horiz(Svx, Svv));
+        mat CD  = P1 * inv(P2);
+
+        C = CD.col(0);
+        D = CD.cols(1, d);
+    } else {
+        C = Syx * inv(Sxx);
+        // D = 0 as we didn't touch it
+    }
 
     // A and B ================================
     mat Tx1x = X.cols(1, T-1) * trans(X.cols(0, T-2)) + V.cols(1, T-1) * trans(J.cols(0, T-2));
@@ -154,12 +173,12 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
     mat Txu  = Tux.t();
     mat Tuu  = u.cols(0, T-2) * trans(u.cols(0, T-2));
 
-    P1 = join_horiz(Tx1x, Tx1u);
-    P2 = join_vert(join_horiz(Txx, Txu), join_horiz(Tux, Tuu));
-    P  = P1 * inv(P2);
+    mat P3 = join_horiz(Tx1x, Tx1u);
+    mat P4 = join_vert(join_horiz(Txx, Txu), join_horiz(Tux, Tuu));
+    mat AB  = P3 * inv(P4);
 
-    mat A = P.col(0);
-    mat B = P.cols(1,d);
+    mat A = AB.col(0);
+    mat B = AB.cols(1, d);
 
     // Q ===================================
     mat Tux1 = trans(Tx1u);
@@ -175,7 +194,12 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
     mat Q = (Tx1x1 - A*Txx1 - B*Tux1) / (T-1);
 
     // R ====================================
-    mat y_hat = C * X.cols(obs) + D * v.cols(obs);
+    mat y_hat(1, T);
+    if (v.n_cols == 1) {
+        y_hat = C * X.cols(obs);
+    } else {
+        y_hat = C * X.cols(obs) + D * v.cols(obs);
+    }
     mat delta_y = y.cols(obs) - y_hat;
 
     // mat R = (delta_y * trans(delta_y) + C*accu(V.cols(obs))*C) / obs.size();
@@ -209,32 +233,7 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
 //' * liks : vector of loglikelihood over the iteration steps
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 // [[Rcpp::export]]
-List LDS_EM(arma::mat y, arma::mat u, arma::mat v, arma::vec init, int niter = 1000, double tol = 1e-5) {
-
-    int d = u.n_rows;
-    mat A(1, 1); A.fill(init(0));
-    mat B(1, d);
-    for (int i = 0; i < d; i++) {
-        B(0,i) = init(i + 1);
-    }
-    mat C(1, 1); C.fill(init(d+1));
-    mat D(1, d);
-    for (int i = 0; i < d; i++) {
-        D(0,i) = init(i+d+2);
-    }
-    mat Q(1, 1);     Q.fill(init(d+d+2));
-    mat R(1, 1);     R.fill(init(d+d+3));
-    mat mu1(1, 1); mu1.fill(init(d+d+4));
-    mat V1(1, 1);   V1.fill(init(d+d+5));
-
-    List theta = List::create(_["A"] = A,
-                              _["B"] = B,
-                              _["C"] = C,
-                              _["D"] = D,
-                              _["Q"] = Q,
-                              _["R"] = R,
-                              _["mu1"] = mu1,
-                              _["V1"] = V1);
+List LDS_EM(arma::mat y, arma::mat u, arma::mat v, List theta, int niter = 1000, double tol = 1e-5) {
 
     vec lik(niter);
     // The exit condition relies on two consecutive iterations so we need to manually do the first two.
@@ -317,7 +316,11 @@ List propagate(List theta, arma::mat u, arma::mat v, arma::mat y, bool stdlik = 
     }
 
     // Prediction =====================
-    Yp = C*Xp + D*v;
+    if (v.n_cols == 1) {
+        Yp = C*Xp;
+    } else {
+        Yp = C*Xp + D*v;
+    }
 
     // Likelihood ======================
     uvec obs = find_finite(y);  // Find indices where there are observations

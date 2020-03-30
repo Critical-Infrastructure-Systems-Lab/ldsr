@@ -3,17 +3,54 @@
 #' If init is a vector, make it a list of one element.
 #' If init is NULL, randomize it. In this case, the function will randomize the initial value by sampling uniformly within the range for each parameters
 #' (A in \[0, 1\], B in \[-1, 1\], C in \[0, 1\] and D in \[-1, 1\]).
-#' @param d Dimension of input
-#' @param num.restarts Number of randomized initial conditions
+#' @param p Dimension of u
+#' @param q Dimension of v
+#' @param num.restarts Number of randomized initial values
 #' @return A list of initial conditions
 #' @export
-make_init <- function(d, num.restarts) {
+make_init <- function(p, q, num.restarts) {
 
   replicate(num.restarts,
-            runif(d + d + 6,
-                  min = c(0, rep(-1, d), 0, rep(-1, d), 0.01, 0.01, -1, 0.01),
-                  max = rep(1, d + d + 6)),
-            simplify = F)
+            list(A = matrix(runif(1)),
+                 B = matrix(runif(p, -1, 1), nrow = 1),
+                 C = matrix(runif(1)),
+                 D = matrix(runif(q, -1, 1), nrow = 1),
+                 Q = matrix(runif(1)),
+                 R = matrix(runif(1)),
+                 mu1 = matrix(runif(1, -1, 1)),
+                 V1 = matrix(runif(1))),
+            simplify = FALSE)
+}
+
+#' Learn LDS model with multiple initial conditions
+#'
+#' This is the backend computation for [LDS_reconstruction].
+#' @inheritParams LDS_EM
+#' @param niter Maximum number of iterations, default 1000
+#' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
+#' @param return.init Indicate whether the initial condition that results in the highest
+#' @return a list as produced by [LDS_EM]. If return.init is true, a vector of initial condition is included in the list as well.
+#' @export
+LDS_EM_restart <- function(y, u, v, init, niter = 1000, tol = 1e-5, return.init = TRUE) {
+
+  # To prevent global variable error in R CMD check
+  init.val <- NULL
+  models <- foreach(init.val = init, .packages = 'ldsr') %dopar% LDS_EM(y, u, v, init.val, niter, tol)
+
+  # Select the model with highest likelihood
+  # Only select models with C > 0 for physical interpretation (if possible)
+  liks <- sapply(models, '[[', 'lik')
+  all.C <- lapply(lapply(models, '[[', 'theta'), '[[', 'C')
+  pos.C <- which(all.C > 0) # Positions of positive C
+  if (length(pos.C) > 0) {
+    max.ind <- which(liks == max(liks[pos.C]))
+  } else {
+    max.ind <- which.max(liks)
+  }
+  ans <- models[[max.ind]]
+  if (return.init) ans$init <- init[[max.ind]]
+
+  ans
 }
 
 #' Call a reconstruction method
@@ -77,11 +114,28 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
   # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
   single <- !is.list(u)
-  N <- if (single) ncol(u) else ncol(u[[1]])
-  p <- if( single) nrow(u) else nrow(u[[1]])
+  if (single) {
+    if (is.null(v)) {
+      v <- matrix(0)
+    } else {
+      if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
+    }
+    N <- ncol(u)
+    p <- nrow(u)
+  } else {
+    if (is.null(v)) {
+      v <- replicate(length(u), matrix(0))
+    } else {
+      if (!identical(sapply(u, dim), sapply(v, dim))) stop('Dimensions of u and v must be the same.')
+    }
+    N <- ncol(u[[1]])
+    p <- nrow(u[[1]])
+  }
+
   end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
     stop('The last year of u is earlier than the last year of the instrumental period.')
+  years <- start.year:end.year
 
   y <- Qa$Qa
   if (transform == 'log') {
@@ -92,12 +146,8 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
     y <- (y^lambda - 1) / lambda
   } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, and set transform = "none".')
 
-  years <- start.year:end.year
-
   if (method != 'EM' && (is.null(ub) || is.null(lb)))
     stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
-
-  if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
 
   # Attach NA and make the y matrix
   mu <- mean(y, na.rm = TRUE)
@@ -216,14 +266,23 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
   Qa <- as.data.table(Qa)
   single <- !is.list(u)
   if (single) {
-    if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
+    if (is.null(v)) {
+      v <- matrix(0)
+    } else {
+      if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
+    }
     N <- ncol(u)
     p <- nrow(u)
   } else {
-    if (!identical(sapply(u, dim), sapply(v, dim))) stop('Dimensions of u and v must be the same.')
+    if (is.null(v)) {
+      v <- replicate(length(u), matrix(0))
+    } else {
+      if (!identical(sapply(u, dim), sapply(v, dim))) stop('Dimensions of u and v must be the same.')
+    }
     N <- ncol(u[[1]])
     p <- nrow(u[[1]])
   }
+
   end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
     stop('The last year of pc is earlier than the last year of the instrumental period.')

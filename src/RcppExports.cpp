@@ -51,23 +51,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// LDS_EM_restart_C
-List LDS_EM_restart_C(arma::mat y, arma::mat u, arma::mat v, List init, int niter, double tol, bool return_init);
-RcppExport SEXP _ldsr_LDS_EM_restart_C(SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP initSEXP, SEXP niterSEXP, SEXP tolSEXP, SEXP return_initSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type y(ySEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type v(vSEXP);
-    Rcpp::traits::input_parameter< List >::type init(initSEXP);
-    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
-    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    Rcpp::traits::input_parameter< bool >::type return_init(return_initSEXP);
-    rcpp_result_gen = Rcpp::wrap(LDS_EM_restart_C(y, u, v, init, niter, tol, return_init));
-    return rcpp_result_gen;
-END_RCPP
-}
 // propagate
 List propagate(List theta, arma::mat u, arma::mat v, arma::mat y, bool stdlik);
 RcppExport SEXP _ldsr_propagate(SEXP thetaSEXP, SEXP uSEXP, SEXP vSEXP, SEXP ySEXP, SEXP stdlikSEXP) {
@@ -150,7 +133,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_ldsr_Kalman_smoother", (DL_FUNC) &_ldsr_Kalman_smoother, 5},
     {"_ldsr_Mstep", (DL_FUNC) &_ldsr_Mstep, 4},
     {"_ldsr_LDS_EM", (DL_FUNC) &_ldsr_LDS_EM, 6},
-    {"_ldsr_LDS_EM_restart_C", (DL_FUNC) &_ldsr_LDS_EM_restart_C, 7},
     {"_ldsr_propagate", (DL_FUNC) &_ldsr_propagate, 5},
     {"_ldsr_NSE", (DL_FUNC) &_ldsr_NSE, 2},
     {"_ldsr_nRMSE", (DL_FUNC) &_ldsr_nRMSE, 3},

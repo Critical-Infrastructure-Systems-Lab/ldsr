@@ -41,17 +41,6 @@ LDS_EM <- function(y, u, v, init, niter = 1000L, tol = 1e-5) {
     .Call(`_ldsr_LDS_EM`, y, u, v, init, niter, tol)
 }
 
-#' Learn LDS model with multiple initial conditions
-#'
-#' This is the backend computation for [LDS_reconstruction].
-#' @inheritParams LDS_EM
-#' @param niter Maximum number of iterations, default 1000.
-#' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
-#' @return a list as produced by [LDS_EM].
-LDS_EM_restart_C <- function(y, u, v, init, niter = 1000L, tol = 1e-5, return_init = FALSE) {
-    .Call(`_ldsr_LDS_EM_restart_C`, y, u, v, init, niter, tol, return_init)
-}
-
 #' State propagation
 #'
 #' This function propagates the state trajectory based on the exogenous inputs only
