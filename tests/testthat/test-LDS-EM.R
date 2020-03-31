@@ -12,11 +12,6 @@ test_that("Randomized restarts works", {
   expect_is(fit, "list")
 })
 
-test_that("Cross validation works with fixed restarts", {
-  cv <- cvLDS(P1annual, u, v, start.year = 1600, init = make_init(nrow(u), nrow(v), 1), Z = make_Z(P1annual$Qa, 2))
-  expect_is(cv, "list")
-})
-
 test_that("Cross validation works with randomized restarts", {
   cv <- cvLDS(P1annual, u, v, start.year = 1600, num.restarts = 2, Z = make_Z(P1annual$Qa, 2))
   expect_is(cv, "list")
