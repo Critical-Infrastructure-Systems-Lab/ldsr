@@ -36,18 +36,18 @@ BEGIN_RCPP
 END_RCPP
 }
 // LDS_EM
-List LDS_EM(arma::mat y, arma::mat u, arma::mat v, List theta, int niter, double tol);
-RcppExport SEXP _ldsr_LDS_EM(SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP thetaSEXP, SEXP niterSEXP, SEXP tolSEXP) {
+List LDS_EM(arma::mat y, arma::mat u, arma::mat v, List theta0, int niter, double tol);
+RcppExport SEXP _ldsr_LDS_EM(SEXP ySEXP, SEXP uSEXP, SEXP vSEXP, SEXP theta0SEXP, SEXP niterSEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat >::type y(ySEXP);
     Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type v(vSEXP);
-    Rcpp::traits::input_parameter< List >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< List >::type theta0(theta0SEXP);
     Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(LDS_EM(y, u, v, theta, niter, tol));
+    rcpp_result_gen = Rcpp::wrap(LDS_EM(y, u, v, theta0, niter, tol));
     return rcpp_result_gen;
 END_RCPP
 }
