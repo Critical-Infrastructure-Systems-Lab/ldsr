@@ -116,26 +116,37 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
                                nb.cores = 1) {
 
   # Preprocessing ------------------------------------------------------------------
-  Qa <- as.data.table(Qa)
-  single <- !is.list(u)
+  # We don't allow both u and v to be NULL for now
+  single <- is.matrix(u) || is.matrix(v)
   if (single) {
-    if (is.null(v)) {
+    if (is.null(u)) { # v is provided
+      u <- matrix(0)
+      N <- ncol(v)
+    } else if (is.null(v)) { # u is provided
       v <- matrix(0)
-    } else {
-      if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
+      N <- ncol(u)
+    } else { # both are provided
+      if (ncol(u) != ncol(v)) stop('u and v must have the same number of time steps.')
+      N <- ncol(u)
     }
-    N <- ncol(u)
     p <- nrow(u)
+    q <- nrow(v)
   } else {
-    if (is.null(v)) {
+    if (is.null(u)) { # v is provided
+      u <- replicate(length(v), matrix(0))
+      N <- ncol(v[[1]])
+    } else if (is.null(v)) { # u is provided
       v <- replicate(length(u), matrix(0))
-    } else {
-      if (!identical(sapply(u, dim), sapply(v, dim))) stop('Dimensions of u and v must be the same.')
+      N <- ncol(u[[1]])
+    } else { # both are provided
+      if (!identical(sapply(u, ncol), sapply(v, ncol))) stop('u and v must have the same number of time steps.')
+      N <- ncol(u[[1]])
     }
-    N <- ncol(u[[1]])
     p <- nrow(u[[1]])
+    q <- nrow(v[[1]])
   }
 
+  Qa <- as.data.table(Qa)
   end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
     stop('The last year of u is earlier than the last year of the instrumental period.')
@@ -160,10 +171,11 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
            rep(NA, end.year - Qa[.N, year]))) # After the instrumental period
 
   if (is.null(init)) {
-    init <- make_init(p, num.restarts)
-  } else if (!is.list(init)) init <- list(init) # One initial condition only
+    init <- make_init(p, q, num.restarts)
+  } else if (class(init[[1]]) != 'theta') stop('Please use make_init() to make the initial values.')
 
-  if (!(method %in% c('EM', 'GA', 'BFGS', 'BFGS_smooth'))) stop("Method undefined. It has to be either EM, GA, BFGS or BFGS_smooth.")
+  if (!(method %in% c('EM', 'GA', 'BFGS', 'BFGS_smooth')))
+    stop("Method undefined. It has to be either EM, GA, BFGS or BFGS_smooth.")
 
   # Subroutines ------------------------------------------------------------------
 
@@ -189,6 +201,8 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
   format_results <- function(results, u, v) {
     with(results, {
       rec <- construct_rec(fit, theta, mu, transform, years)
+      if (ncol(u) > 1) colnames(theta$B) <- rownames(u)
+      if (ncol(v) > 1) colnames(theta$D) <- rownames(v)
       ans <- list(rec = rec, theta = theta, lik = lik)
       if (return.raw) {
         raw <- propagate(theta, u, v, y)
@@ -267,26 +281,36 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
                    niter = 1000, tol = 1e-5) {
 
   # Preprocessing ------------------------------------------------------------------
-  Qa <- as.data.table(Qa)
-  single <- !is.list(u)
+  single <- is.matrix(u) || is.matrix(v)
   if (single) {
-    if (is.null(v)) {
+    if (is.null(u)) { # v is provided
+      u <- matrix(0)
+      N <- ncol(v)
+    } else if (is.null(v)) { # u is provided
       v <- matrix(0)
-    } else {
-      if (!identical(dim(u), dim(v))) stop('Dimensions of u and v must be the same.')
+      N <- ncol(u)
+    } else { # both are provided
+      if (ncol(u) != ncol(v)) stop('u and v must have the same number of time steps.')
+      N <- ncol(u)
     }
-    N <- ncol(u)
     p <- nrow(u)
+    q <- nrow(v)
   } else {
-    if (is.null(v)) {
+    if (is.null(u)) { # v is provided
+      u <- replicate(length(v), matrix(0))
+      N <- ncol(v[[1]])
+    } else if (is.null(v)) { # u is provided
       v <- replicate(length(u), matrix(0))
-    } else {
-      if (!identical(sapply(u, dim), sapply(v, dim))) stop('Dimensions of u and v must be the same.')
+      N <- ncol(u[[1]])
+    } else { # both are provided
+      if (!identical(sapply(u, ncol), sapply(v, ncol))) stop('u and v must have the same number of time steps.')
+      N <- ncol(u[[1]])
     }
-    N <- ncol(u[[1]])
     p <- nrow(u[[1]])
+    q <- nrow(v[[1]])
   }
 
+  Qa <- as.data.table(Qa)
   end.year <- start.year + N - 1
   if (end.year < Qa[.N, year])
     stop('The last year of pc is earlier than the last year of the instrumental period.')
@@ -295,8 +319,8 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
     stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
 
   if (is.null(init)) {
-    init <- make_init(p, num.restarts)
-  } else if (!is.list(init)) init <- list(init) # One initial condition only
+    init <- make_init(p, q, num.restarts)
+  } else if (class(init[[1]]) != 'theta') stop('Please use make_init() to make the initial values.')
 
   obs <- Qa$Qa
   if (transform == 'log') {
