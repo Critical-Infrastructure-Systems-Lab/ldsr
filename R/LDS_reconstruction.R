@@ -6,19 +6,23 @@
 #' @param p Dimension of u
 #' @param q Dimension of v
 #' @param num.restarts Number of randomized initial values
-#' @return A list of initial conditions
+#' @return A list of initial conditions, each element is an object of class `theta`.
 #' @export
 make_init <- function(p, q, num.restarts) {
 
   replicate(num.restarts,
-            list(A = matrix(runif(1)),
-                 B = matrix(runif(p, -1, 1), nrow = 1),
-                 C = matrix(runif(1)),
-                 D = matrix(runif(q, -1, 1), nrow = 1),
-                 Q = matrix(runif(1)),
-                 R = matrix(runif(1)),
-                 mu1 = matrix(runif(1, -1, 1)),
-                 V1 = matrix(runif(1))),
+            {
+              theta <- list(A = matrix(runif(1)),
+                            B = matrix(runif(p, -1, 1), nrow = 1),
+                            C = matrix(runif(1)),
+                            D = matrix(runif(q, -1, 1), nrow = 1),
+                            Q = matrix(runif(1)),
+                            R = matrix(runif(1)),
+                            mu1 = matrix(runif(1, -1, 1)),
+                            V1 = matrix(runif(1)))
+              class(theta) <- 'theta'
+              theta
+            },
             simplify = FALSE)
 }
 
@@ -34,21 +38,21 @@ make_init <- function(p, q, num.restarts) {
 LDS_EM_restart <- function(y, u, v, init, niter = 1000, tol = 1e-5, return.init = TRUE) {
 
   # To prevent global variable error in R CMD check
-  init.val <- NULL
-  models <- foreach(init.val = init, .packages = 'ldsr') %dopar% LDS_EM(y, u, v, init.val, niter, tol)
+  theta0 <- NULL
+  models <- foreach(theta0 = init, .packages = 'ldsr') %dopar% LDS_EM(y, u, v, theta0, niter, tol)
 
   # Select the model with highest likelihood
   # Only select models with C > 0 for physical interpretation (if possible)
   liks <- sapply(models, '[[', 'lik')
-  all.C <- lapply(lapply(models, '[[', 'theta'), '[[', 'C')
-  pos.C <- which(all.C > 0) # Positions of positive C
-  if (length(pos.C) > 0) {
-    max.ind <- which(liks == max(liks[pos.C]))
+  allC <- lapply(lapply(models, '[[', 'theta'), '[[', 'C')
+  posC <- which(allC > 0) # Positions of positive C
+  if (length(posC) > 0) {
+    maxInd <- which(liks == max(liks[posC]))
   } else {
-    max.ind <- which.max(liks)
+    maxInd <- which.max(liks)
   }
-  ans <- models[[max.ind]]
-  if (return.init) ans$init <- init[[max.ind]]
+  ans <- models[[maxInd]]
+  if (return.init) ans$init <- init[[maxInd]]
 
   ans
 }
