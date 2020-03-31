@@ -68,7 +68,11 @@ List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool std
     }
     // Subsequent time steps
     for (int t=1; t<T; t++) {
-        Xp.col(t) = A * Xu.col(t-1) + B * u.col(t-1);
+        if (u.n_cols == 1) {
+            Xp.col(t) = A * Xu.col(t-1);
+        } else {
+            Xp.col(t) = A * Xu.col(t-1) + B * u.col(t-1);
+        }
         Vp.col(t) = A * Vu.col(t-1) * A + Q;
         if (v.n_cols == 1) {
             Yp.col(t) = C * Xp.col(t);
@@ -137,15 +141,17 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
     mat V = fit["V"];
     mat J = fit["J"];
     int T = y.n_cols;
-    int d = u.n_rows;
+    int p = u.n_rows;
+    int q = v.n_rows;
     uvec obs = find_finite(y); // indices of observations
 
-    // C and D ================================
+    // C, D, and R ================================
     // Sum for observed part
     mat Syx = y.cols(obs) * trans(X.cols(obs));
     mat Sxx = X.cols(obs) * trans(X.cols(obs)) + accu(V.cols(obs));
     mat C(1, 1);
-    mat D(1, d);
+    mat D; D.zeros(1, q);
+    mat y_hat(1, T);
 
     if (v.n_cols > 1) {
         mat Syv = y.cols(obs) * trans(v.cols(obs));
@@ -159,53 +165,55 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
         mat CD  = P1 * inv(P2);
 
         C = CD.col(0);
-        D = CD.cols(1, d);
-    } else {
-        C = Syx * inv(Sxx);
-        // D = 0 as we didn't touch it
-    }
-
-    // A and B ================================
-    mat Tx1x = X.cols(1, T-1) * trans(X.cols(0, T-2)) + V.cols(1, T-1) * trans(J.cols(0, T-2));
-    mat Tx1u = X.cols(1, T-1) * trans(u.cols(0, T-2));
-    mat Txx  = X.cols(0, T-2) * trans(X.cols(0, T-2)) + accu(V.cols(0, T-2));
-    mat Tux  = u.cols(0, T-2) * trans(X.cols(0, T-2));
-    mat Txu  = Tux.t();
-    mat Tuu  = u.cols(0, T-2) * trans(u.cols(0, T-2));
-
-    mat P3 = join_horiz(Tx1x, Tx1u);
-    mat P4 = join_vert(join_horiz(Txx, Txu), join_horiz(Tux, Tuu));
-    mat AB  = P3 * inv(P4);
-
-    mat A = AB.col(0);
-    mat B = AB.cols(1, d);
-
-    // Q ===================================
-    mat Tux1 = trans(Tx1u);
-    mat Tx1x1 = X.cols(1, T-1) * trans(X.cols(1, T-1)) + accu(V.cols(1, T-1));
-    // Note: Txx1 = Tx1x is not true for the first few time steps, but using P(t+1,t) is better
-    // because this is the quantity derived from the backward recursion.
-    // P(t, t+1) is not a standard quantity that is derived and therefore we shouldn't use
-    // V_t J_{t+1} to calculate it.
-    // Using the symmetric form matches the alternate formula for Q
-    mat Txx1 = trans(Tx1x);
-
-    // mat Q = (Tx1x1 - A*Txx*A - Tx1u*trans(B) - B*Tux1 + B*Tuu*trans(B)) / (T-1);
-    mat Q = (Tx1x1 - A*Txx1 - B*Tux1) / (T-1);
-
-    // R ====================================
-    mat y_hat(1, T);
-    if (v.n_cols == 1) {
-        y_hat = C * X.cols(obs);
-    } else {
+        D = CD.cols(1, q);
         y_hat = C * X.cols(obs) + D * v.cols(obs);
+    } else {
+        C = Syx * inv(Sxx); // D = 0 as we didn't touch it
+        y_hat = C * X.cols(obs);
     }
-    mat delta_y = y.cols(obs) - y_hat;
 
     // mat R = (delta_y * trans(delta_y) + C*accu(V.cols(obs))*C) / obs.size();
-    mat R = (delta_y * trans(y.cols(obs))) / obs.size();
+    mat R = ((y.cols(obs) - y_hat) * trans(y.cols(obs))) / obs.size();
 
-    // Initial state =========================
+    // A, B, and Q ================================
+    mat Tx1x = X.cols(1, T-1) * trans(X.cols(0, T-2)) + V.cols(1, T-1) * trans(J.cols(0, T-2));
+    mat Txx  = X.cols(0, T-2) * trans(X.cols(0, T-2)) + accu(V.cols(0, T-2));
+    mat Txx1 = Tx1x.t();
+    mat Tx1x1 = X.cols(1, T-1) * trans(X.cols(1, T-1)) + accu(V.cols(1, T-1));
+
+    mat A(1, 1);
+    mat B; B.zeros(1, p);
+    mat Q(1, 1);
+
+    if (u.n_cols > 1) {
+        mat Tx1u = X.cols(1, T-1) * trans(u.cols(0, T-2));
+        mat Tux  = u.cols(0, T-2) * trans(X.cols(0, T-2));
+        mat Txu  = Tux.t();
+        mat Tuu  = u.cols(0, T-2) * trans(u.cols(0, T-2));
+        mat Tux1 = trans(Tx1u);
+
+        mat P3 = join_horiz(Tx1x, Tx1u);
+        mat P4 = join_vert(join_horiz(Txx, Txu), join_horiz(Tux, Tuu));
+        mat AB  = P3 * inv(P4);
+
+        A = AB.col(0);
+        B = AB.cols(1, p);
+
+        // Note on updating Q ===================================
+        // Txx1 = Tx1x is not true for the first few time steps, but using P(t+1,t) is better
+        // because this is the quantity derived from the backward recursion.
+        // P(t, t+1) is not a standard quantity that is derived and therefore we shouldn't use
+        // V_t J_{t+1} to calculate it.
+        // Using the symmetric form matches the alternate formula for Q
+        // mat Q = (Tx1x1 - A*Txx*A - Tx1u*trans(B) - B*Tux1 + B*Tuu*trans(B)) / (T-1);
+        Q = (Tx1x1 - A*Txx1 - B*Tux1) / (T-1);
+    } else {
+        A = Tx1x * inv(Txx); // B = 0 as we didn't touch it
+        Q = (Tx1x1 - A*Txx1) / (T-1);
+    }
+
+    // Initial state ====================================
+    // Explicitly assign to matrices, otherwise "Not a matrix" error.
     mat mu1 = X.col(0);
     mat V1 = V.col(0);
 
@@ -233,9 +241,10 @@ List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
 //' * liks : vector of loglikelihood over the iteration steps
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 // [[Rcpp::export]]
-List LDS_EM(arma::mat y, arma::mat u, arma::mat v, List theta, int niter = 1000, double tol = 1e-5) {
+List LDS_EM(arma::mat y, arma::mat u, arma::mat v, List theta0, int niter = 1000, double tol = 1e-5) {
 
     vec lik(niter);
+    List theta = theta0;
     // The exit condition relies on two consecutive iterations so we need to manually do the first two.
     // i = 0
     List fit = Kalman_smoother(y, u, v, theta);
@@ -311,7 +320,11 @@ List propagate(List theta, arma::mat u, arma::mat v, arma::mat y, bool stdlik = 
 
     // Next time steps
     for (int t=1; t<T; t++) {
-        Xp.col(t) = A*Xp.col(t-1) + B*u.col(t-1);
+        if (u.n_cols == 1) {
+            Xp.col(t) = A*Xp.col(t-1);
+        } else {
+            Xp.col(t) = A*Xp.col(t-1) + B*u.col(t-1);
+        }
         Vp.col(t) = A*Vp.col(t-1)*A + Q;
     }
 
