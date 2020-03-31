@@ -253,10 +253,11 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
 #' @inheritParams LDS_reconstruction
 #' @return A vector of prediction.
 #' @export
-one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, num.restarts = 20,
+one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts = 20,
                        ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100, niter = 1000, tol = 1e-6, use.raw = FALSE) {
 
   y[instPeriod][z] <- NA
+  init <- make_init(nrow(u), nrow(v), num.restarts)
   result <- call_method(y, u, v, method, init, num.restarts, return.init = FALSE,
                         ub, lb, num.islands, pop.per.island,
                         niter, tol)
@@ -274,9 +275,8 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
 #' @inheritParams LDS_reconstruction
 #' @inheritParams cvPCR
 #' @export
- cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log',
-                   init = NULL, num.restarts = 50,
-                   Z = NULL, metric.space = 'transformed', use.raw = FALSE,
+ cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log', num.restarts = 50,
+                   Z = make_Z(Qa$Qa), metric.space = 'transformed', use.raw = FALSE,
                    ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100,
                    niter = 1000, tol = 1e-5) {
 
@@ -331,11 +331,7 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
     obs <- (obs^lambda - 1) / lambda
   } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, with transform = "none".')
 
-  if (is.null(Z)) {
-    Z <- make_Z(obs)
-  } else {
-    if (!is.list(Z)) stop("Please provide the cross-validation folds (Z) in a list.")
-  }
+  if (!is.list(Z)) stop("Please provide the cross-validation folds (Z) in a list.")
 
   years <- start.year:end.year
   instPeriod <- which(years %in% Qa$year)
@@ -348,13 +344,13 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', init = NULL, n
 
   Ycv <- if (single) {
     foreach(z = Z, .packages = 'ldsr') %dopar%
-      one_lds_cv(z, instPeriod, mu, y, u, v, method, init, num.restarts,
+      one_lds_cv(z, instPeriod, mu, y, u, v, method, num.restarts,
                  ub, lb, num.islands, pop.per.island, niter, tol, use.raw)
   } else {
     foreach(z = Z, .packages = 'ldsr') %:%
       foreach(i = seq_along(u),
               .combine = cbind, .multicombine = TRUE, .final = rowMeans) %dopar%
-        one_lds_cv(z, instPeriod, mu, y, u[[i]], v[[i]], method, init, num.restarts,
+        one_lds_cv(z, instPeriod, mu, y, u[[i]], v[[i]], method, num.restarts,
                    ub, lb, num.islands, pop.per.island, niter, tol, use.raw)
   }
 
