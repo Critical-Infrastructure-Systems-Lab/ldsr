@@ -52,6 +52,43 @@ water_to_calendar_year <- function(df, dt, keep.all = FALSE) {
     }
 }
 
+#' Transform the estimates before calculating metrics
+#'
+#' If you already ran the cross-validation on transformed output and now wanted to calculate performance on the back-transformed one, or vice-versa, you don't have to rerun the whole cross-validation, but just need to transform or back-transform the cross-validation Ycv. This function helps you do that.
+#' @param cv Cross-validation output as produced by cvLDS or cvPCR
+#' @param transform Either "log", "exp", "boxcox" or "inv_boxcox"
+#' @param lambda Lambda value used in Box-Cox or inverse Box-Cox
+#' @return A new cv object wit hthe new metrics
+#' @export
+metrics_with_transform <- function(cv, transform, lambda = NULL) {
+  Ycv <- copy(cv$Ycv)
+  Ycv[,
+      Y := switch(transform,
+                 log = log(Y),
+                 exp = exp(Y),
+                 boxcox = {if (lambda == 0) log(Y) else (Y^lambda - 1) / lambda},
+                 inv_boxcox = {if (lambda == 0) exp(Y) else (Y*lambda + 1)^(1/lambda)})
+      ]
+  obs <- copy(cv$obs)
+  obs[,
+      y := switch(transform,
+                 log = log(y),
+                 exp = exp(y),
+                 boxcox = {if (lambda == 0) log(y) else (y^lambda - 1) / lambda},
+                 inv_boxcox = {if (lambda == 0) exp(Y) else (y*lambda + 1)^(1/lambda)})
+      ]
+
+  metrics.dist <- Ycv[, data.table(t(calculate_metrics(Y, obs$y, cv$Z[[rep]]))), by = rep]
+  metrics.dist[, rep := NULL]
+  metrics <- metrics.dist[, lapply(.SD, mean)]
+
+  list(metrics.dist = metrics.dist,
+       metrics = metrics,
+       target = obs,
+       Ycv = Ycv,
+       Z = Z)
+}
+
 #' Reconstruction metrics
 #'
 #' Calculate reconstruction metrics from the instrumental period
