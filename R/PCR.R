@@ -149,13 +149,15 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
   }
   # doing mapply is a lot faster than working on data.table
   metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = target))
+  metrics.dist <- data.table(t(metrics.dist))
+  metrics <- metrics.dist[, lapply(.SD, mean)]
 
   names(Ycv) <- seq_along(Ycv)
   setDT(Ycv, check.names = FALSE)
   Ycv[, year := Qa$year]
 
-  list(metrics.dist = t(metrics.dist),
-       metrics = rowMeans(metrics.dist),
+  list(metrics.dist = metrics.dist,
+       metrics = metrics,
        obs = data.table(year = Qa$year, y = target),
        Ycv = melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Y'),
        Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
