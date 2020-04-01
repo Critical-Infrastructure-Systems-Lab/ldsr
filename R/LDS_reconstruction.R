@@ -16,10 +16,10 @@ make_init <- function(p, q, num.restarts) {
                             B = matrix(runif(p, -1, 1), nrow = 1),
                             C = matrix(runif(1)),
                             D = matrix(runif(q, -1, 1), nrow = 1),
-                            Q = matrix(runif(1)),
-                            R = matrix(runif(1)),
-                            mu1 = matrix(runif(1, -1, 1)),
-                            V1 = matrix(runif(1)))
+                            Q = matrix(1),
+                            R = matrix(1),
+                            mu1 = matrix(0),
+                            V1 = matrix(1))
               class(theta) <- 'theta'
               theta
             },
@@ -317,10 +317,6 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
 
   if (method != 'EM' && (is.null(ub) || is.null(lb)))
     stop("For GA and BFGS methods, upper and lower bounds of parameters must be provided.")
-
-  if (is.null(init)) {
-    init <- make_init(p, q, num.restarts)
-  } else if (class(init[[1]]) != 'theta') stop('Please use make_init() to make the initial values.')
 
   obs <- Qa$Qa
   if (transform == 'log') {
