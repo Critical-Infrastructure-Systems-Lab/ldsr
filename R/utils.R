@@ -69,7 +69,7 @@ metrics_with_transform <- function(cv, transform, lambda = NULL) {
                  boxcox = {if (lambda == 0) log(Y) else (Y^lambda - 1) / lambda},
                  inv_boxcox = {if (lambda == 0) exp(Y) else (Y*lambda + 1)^(1/lambda)})
       ]
-  obs <- copy(cv$obs)
+  obs <- copy(cv$target)
   obs[,
       y := switch(transform,
                  log = log(y),
@@ -86,7 +86,7 @@ metrics_with_transform <- function(cv, transform, lambda = NULL) {
        metrics = metrics,
        target = obs,
        Ycv = Ycv,
-       Z = Z)
+       Z = cv$Z)
 }
 
 #' Reconstruction metrics
