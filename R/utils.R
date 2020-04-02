@@ -141,3 +141,24 @@ make_Z <- function(obs, nRuns = 30, frac = 0.1, contiguous = TRUE) {
     }
   }
 }
+
+#' Inverse Box-Cox transform
+#'
+#' @param x A numeric vector to be transformed
+#' @param lambda Lambda parameter
+#' @return The inverse Box-Cox
+#' @export
+inv_boxcox <- function(x, lambda) {
+  if (lambda == 0) exp(x) else (x*lambda + 1)^(1/lambda)
+}
+
+#' Exponential confidence interval
+#'
+#' Get the confidence interval of Q = exp(Y) when Y is normal, i.e, Q is log-normal.
+#' @param y A vector of model estimates
+#' @param sigma2 The variance of y as learned from a model
+exp_ci <- function(y, sigma2) {
+  dist <- 1.96 * sqrt((exp(sigma2) - 1) * exp(2 * y + sigma2))
+  Q <- exp(y)
+  data.table(Q = Q, Ql = Q - dist, Qu = Q + dist)
+}

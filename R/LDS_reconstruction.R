@@ -181,20 +181,25 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
 
   construct_rec <- function(fit, theta, mu, transform, years) {
     # Convert Y to Q and calculate confidence intervals
-    X <- as.vector(fit$X)
-    V <- as.vector(fit$V)
-    Y <- as.vector(fit$Y + mu)
+    X <- c(fit$X)
+    V <- c(fit$V)
+    Y <- c(fit$Y) + mu
+    C <- c(theta$C)
     # Confidence intervals
     CI.X <- 1.96 * sqrt(V)
-    CI.Y <- 1.96 * (as.vector(theta$C) * V * as.vector(theta$C) + as.vector(theta$R))
+    varY <- C * V * C + c(theta$R)
+    CI.Y <- 1.96 * sqrt(varY)
 
     X.out <- data.table(year = years, X = X, Xl = X - CI.X, Xu = X + CI.X)
-    Q.out <- data.table(Q = Y, Ql = Y - CI.Y, Qu = Y + CI.Y)
-    if (transform == 'log') {
-      Q.out <- exp(Q.out)
-    } else if (transform == 'boxcox') {
-      if (lambda == 0) Q.out <- exp(Q.out) else Q.out <- (Q.out*lambda + 1)^(1/lambda)
-    }
+
+    Q.out <- switch(transform,
+                    log = exp_ci(Y, varY),
+                    none = data.table(Q = Y, Ql = Y - CI.Y, Qu = Y + CI.Y),
+                    boxcox =
+                      if (lambda == 0) exp_ci(y, varY) else {
+                        dt <- cbind(Q = Y, Ql = Y - CI.Y, Qu = Y + CI.Y)
+                        dt <- as.data.table(inv_boxcox(dt, lambda))
+                      })
     cbind(X.out, Q.out)
   }
 
@@ -263,9 +268,9 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
                         niter, tol)
   if (use.raw) {
     raw <- propagate(result$theta, u, v, y)
-    as.vector(raw$Y[instPeriod]) + mu
+    c(raw$Y[instPeriod]) + mu
   } else {
-    as.vector(result$fit$Y[instPeriod]) + mu
+    c(result$fit$Y[instPeriod]) + mu
   }
 }
 
@@ -354,7 +359,7 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
     if (transform == 'log') {
       Ycv <- lapply(Ycv, exp)
     } else if (transform == 'boxcox') {
-      Ycv <- lapply(Ycv, function(x) (x*lambda + 1)^(1/lambda))
+      Ycv <- lapply(Ycv, inv_boxcox, lambda = lambda)
     }
     target <- Qa$Qa
   } else {

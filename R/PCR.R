@@ -4,7 +4,7 @@
 #' @param Qa Observations: a data.frame of annual streamflow with at least two columns: year and Qa.
 #' @param pc For a single model: a data.frame, one column for each principal component. For an ensemble reconstruction: a list, each element is a data.frame of principal components.
 #' @param start.year Starting year of the climate proxies, i.e, the first year of the paleo period. `start.year + nrow(pc) - 1` will determine the last year of the study horizon, which must be greater than or equal to the last year in `Qa`.
-#' @param transform Flow transformation, either "log", "boxcox" or "none".
+#' @param transform Flow transformation, either "log", "boxcox" or "none". Note that if the Box-Cox transform is used, the confidence interval after back-transformation is simply the back-transform of the trained onfidence interval; this is hackish and not entirely accurate.
 #' @return A list of reconstruction results, with the following elements:
 #' ## For a single-model reconstruction:
 #' * rec: reconstructed streamflow with 95% prediction interval; a data.table with four columns: year, Q, Ql (lower bound), and Qu (upper bound).
@@ -43,21 +43,23 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
     df <- pc[years %in% Qa$year][, y := y]
     fit <- stats::lm(y ~ ., data = df, na.action = na.omit)
     rec <- stats::predict(fit, newdata = pc, interval = 'prediction')
-    if (transform == 'log') {
-      rec <- exp(rec)
+    if ((transform == 'log') || (transform == 'boxcox' & lambda == 0)) {
+      # dist = 1.96 * sqrt(varY)
+      varY <- ((rec[, 'upr'] - rec[, 'fit']) / 1.96)^2
+      rec <- exp_ci(rec[, 'fit'], varY) # This returns a data.table directly
     } else {
-      if (transform == 'boxcox') rec <- (rec*lambda + 1)^(1/lambda)
+      if (transform == 'boxcox') rec <- inv_boxcox(rec, lambda)
+      rec <- as.data.table(rec)
+      setnames(rec, c('Q', 'Ql', 'Qu'))
     }
-    rec <- data.table(rec)
-    setnames(rec, c('Q', 'Ql', 'Qu'))
     rec$year <- years
     ans <- list(rec = rec,
                 coeffs = fit$coefficients,
                 sigma = stats::sigma(fit))
   } else {
+    pc <- lapply(pc, as.data.table)
     ensemble <- lapply(pc,
                        function(pcX) {
-                         setDT(pcX)
                          df <- pcX[instPeriod][, y := y]
                          fit <- lm(y ~ ., data = df, na.action = na.omit)
                          list(Q = stats::predict(fit, newdata = pcX),
@@ -68,7 +70,7 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
     if (transform == 'log') {
       Q <- exp(Q)
     } else {
-      if (transform == 'boxcox') Q <- (Q*lambda + 1)^(1/lambda)
+      if (transform == 'boxcox') Q <- inv_boxcox(Q, lambda)
     }
     rec <- data.table(year = years, Q = Q)
     ans <- list(rec = rec, ensemble = ensemble)
@@ -141,13 +143,13 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
     if (transform == 'log') {
       Ycv <- lapply(Ycv, exp)
     } else if (transform == 'boxcox') {
-      Ycv <- lapply(Ycv, function(x) (x*lambda + 1)^(1/lambda))
+      Ycv <- lapply(Ycv, inv_boxcox, lambda = lambda)
     }
     target <- Qa$Qa
   } else {
     target <- y
   }
-  # doing mapply is a lot faster than working on data.table
+  # doing mapply on matrices is faster than working on data.table
   metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = target))
   metrics.dist <- data.table(t(metrics.dist))
   metrics <- metrics.dist[, lapply(.SD, mean)]
