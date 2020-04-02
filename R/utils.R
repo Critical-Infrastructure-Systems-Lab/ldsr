@@ -99,10 +99,10 @@ metrics_with_transform <- function(cv, transform, lambda = NULL) {
 #' @return A named vector of performance metrics
 #' @export
 calculate_metrics <- function(sim, obs, z, norm.fun = mean) {
-    train.sim <- sim[-z]
-    train.sim <- train.sim[!is.na(train.sim)]
     train.obs <- obs[-z]
-    train.obs <- train.obs[!is.na(train.obs)]
+    obsInd <- which(!is.na(train.obs))
+    train.obs <- train.obs[obsInd]
+    train.sim <- sim[-z][obsInd]
     val.sim <- sim[z]
     val.obs <- obs[z]
 
