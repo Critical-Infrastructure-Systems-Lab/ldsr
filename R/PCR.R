@@ -158,7 +158,7 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
 
   list(metrics.dist = metrics.dist,
        metrics = metrics,
-       obs = data.table(year = Qa$year, y = target),
+       target = data.table(year = Qa$year, y = target),
        Ycv = melt(Ycv, id.vars = 'year', variable.name = 'rep', value.name = 'Y'),
        Z = Z) # Retain Z so that we can plot the CV points when analyzing CV results
 }
