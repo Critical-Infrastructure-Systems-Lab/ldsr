@@ -43,12 +43,19 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
     df <- pc[years %in% Qa$year][, y := y]
     fit <- stats::lm(y ~ ., data = df, na.action = na.omit)
     rec <- stats::predict(fit, newdata = pc, interval = 'prediction')
-    if ((transform == 'log') || (transform == 'boxcox' & lambda == 0)) {
+    if (transform == 'log') {
       # dist = 1.96 * sqrt(varY)
       varY <- ((rec[, 'upr'] - rec[, 'fit']) / 1.96)^2
       rec <- exp_ci(rec[, 'fit'], varY) # This returns a data.table directly
-    } else {
-      if (transform == 'boxcox') rec <- inv_boxcox(rec, lambda)
+    } else if (transform == 'boxcox') {
+      if (lambda == 0) {
+        varY <- ((rec[, 'upr'] - rec[, 'fit']) / 1.96)^2
+        rec <- exp_ci(rec[, 'fit'], varY) # This returns a data.table directly
+      } else {
+        rec <- as.data.table(inv_boxcox(rec, lambda))
+        setnames(rec, c('Q', 'Ql', 'Qu'))
+      }
+    } else {# none
       rec <- as.data.table(rec)
       setnames(rec, c('Q', 'Ql', 'Qu'))
     }
