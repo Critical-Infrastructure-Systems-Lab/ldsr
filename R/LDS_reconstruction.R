@@ -47,7 +47,7 @@ LDS_EM_restart <- function(y, u, v, init, niter = 1000, tol = 1e-5, return.init 
   allC <- lapply(lapply(models, '[[', 'theta'), '[[', 'C')
   posC <- which(allC > 0) # Positions of positive C
   if (length(posC) > 0) {
-    maxInd <- which(liks == max(liks[posC]))
+    maxInd <- which(liks == max(liks[posC], na.rm = TRUE))
   } else {
     maxInd <- which.max(liks)
   }
