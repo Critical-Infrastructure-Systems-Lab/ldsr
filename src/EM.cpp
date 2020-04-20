@@ -134,6 +134,7 @@ List Kalman_smoother(arma::mat y, arma::mat u, arma::mat v, List theta, bool std
 //'
 //' @inheritParams Kalman_smoother
 //' @param fit result of [Kalman_smoother]
+//' @return An object of class `theta`: a list of
 // [[Rcpp::export]]
 List Mstep(arma::mat y, arma::mat u, arma::mat v, List fit) {
 

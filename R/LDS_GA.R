@@ -2,6 +2,7 @@
 #'
 #' @param theta.vec a vector of parameter elements
 #' @param d dimention of inputs
+#' @return A theta object, see [make_init]
 vec_to_list <- function(theta.vec, d) {
   d2 <- d*2
   list(A = matrix(theta.vec[1]),
@@ -49,6 +50,7 @@ penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
 #' @param y Transformed and standardized streamflow
 #' @param parallel Logical, whether parallel computation is used
 #' @param lambda weight for penalty
+#' @return A list of reconstruction results; see [LDS_reconstruction]
 LDS_GA <- function(y, u, v, lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100, niter = 1000, parallel = TRUE) {
 
   # Run genetic algorithm
@@ -84,6 +86,7 @@ LDS_GA <- function(y, u, v, lambda = 1, ub, lb, num.islands = 4, pop.per.island 
 #' **Warning** This is an experimental feature. Use with care.
 #' @inheritParams LDS_GA
 #' @inheritParams LDS_reconstruction
+#' @return A list of reconstruction results; see [LDS_reconstruction]
 LDS_BFGS_with_update <- function(y, u, v, lambda = 1, ub, lb, num.restarts = 100, parallel = TRUE) {
 
   d <- nrow(u)
@@ -149,6 +152,7 @@ ssqTrain <- function(theta, u, v, y) {
 #' **Warning** This is an experimental feature. Use with care.
 #' @inheritParams LDS_GA
 #' @inheritParams LDS_reconstruction
+#' @return A list of reconstruction results; see [LDS_reconstruction]
 LDS_BFGS <- function(y, u, v, ub, lb, num.restarts = 100, parallel = TRUE) {
 
   d <- nrow(u)

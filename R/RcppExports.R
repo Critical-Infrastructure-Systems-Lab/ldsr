@@ -20,6 +20,7 @@ Kalman_smoother <- function(y, u, v, theta, stdlik = TRUE) {
 #'
 #' @inheritParams Kalman_smoother
 #' @param fit result of [Kalman_smoother]
+#' @return An object of class `theta`: a list of
 Mstep <- function(y, u, v, fit) {
     .Call(`_ldsr_Mstep`, y, u, v, fit)
 }

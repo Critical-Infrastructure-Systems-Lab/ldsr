@@ -257,7 +257,8 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
 #' @return A vector of prediction.
 #' @export
 one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts = 20,
-                       ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100, niter = 1000, tol = 1e-6, use.raw = FALSE) {
+                       ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100,
+                       niter = 1000, tol = 1e-6, use.raw = FALSE) {
 
   y[instPeriod][z] <- NA
   init <- make_init(nrow(u), nrow(v), num.restarts)
@@ -278,6 +279,12 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
 #' @inheritParams LDS_reconstruction
 #' @inheritParams cvPCR
 #' @param use.raw Whether performance metrics are calculated on the raw time series. Experimental; don't use.
+#' @return A list of cross validation results
+#' * metrics.dist: distribution of performance metrics across all cross-validation runs; a matrix, one column for each metric, with column names.
+#' * metrics: average performance metrics; a named vector.
+#' * target: the (transformed) observations used for cross-validation; a data.table with two columns (year, y)
+#' * Ycv: the predicted streamflow in each cross validation run; a matrix, one column for each cross-validation run
+#' * Z: the cross-validation folds
 #' @export
  cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log', num.restarts = 50,
                    Z = make_Z(Qa$Qa), metric.space = 'transformed', use.raw = FALSE,
