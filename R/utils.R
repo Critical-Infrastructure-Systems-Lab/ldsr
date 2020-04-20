@@ -62,6 +62,7 @@ water_to_calendar_year <- function(df, dt, keep.all = FALSE) {
 #' @export
 metrics_with_transform <- function(cv, transform, lambda = NULL) {
   Ycv <- copy(cv$Ycv)
+  Y <- y <- NULL
   Ycv[,
       Y := switch(transform,
                  log = log(Y),

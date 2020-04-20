@@ -23,6 +23,7 @@ double NSE(NumericVector yhat, NumericVector y) {
 //' RMSE is normalized by the normalization constant
 //' @param yhat Model outputs
 //' @param y Observations
+//' @param normConst The normalization constant
 //' @return normalized RMSE
 //' @export
 //[[Rcpp::export]]

@@ -1,19 +1,18 @@
-#' P1 annual streamflow
+#' Annual streamflow at Nakhon Phanom
 #'
-#' A dataset contaning annual streamflow of the Ping River measured at station P1 (Chiang Mai,
-#' Thailand).
+#' A dataset contaning annual streamflow of the Mekong River measured at station Nakhon Phanom.
 #'
-#' @format A data frame with 85 rows and 2 variables:
+#' @format A data.table with two columns
 #' \describe{
-#'   \item{year}{from 1921 to 1985}
-#'   \item{Qa}{annual streamflow in million cubic meters per month}
+#'   \item{year}{from 1960 to 2005}
+#'   \item{Qa}{mean annual streamflow, cubic meter per second}
 #' }
-#' @source \url{https://www.hydro-1.net/}
-"P1annual"
+#' @source Mekong River Commission
+"NPannual"
 
 #' Selected principal components
 #'
-#' A dataset contaning the principal components of MADA surrounding P1).
+#' A dataset contaning the principal components of MADA surrounding NP
 #'
 #' @format A data.table
-"P1pc"
+"NPpc"

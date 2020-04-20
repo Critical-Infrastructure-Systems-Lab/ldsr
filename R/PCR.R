@@ -41,7 +41,7 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
   if (single) {
     pc <- as.data.table(pc)
     df <- pc[years %in% Qa$year][, y := y]
-    fit <- stats::lm(y ~ ., data = df, na.action = na.omit)
+    fit <- stats::lm(y ~ ., data = df, na.action = stats::na.omit)
     rec <- stats::predict(fit, newdata = pc, interval = 'prediction')
     if (transform == 'log') {
       # dist = 1.96 * sqrt(varY)
@@ -68,7 +68,7 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
     ensemble <- lapply(pc,
                        function(pcX) {
                          df <- pcX[instPeriod][, y := y]
-                         fit <- lm(y ~ ., data = df, na.action = na.omit)
+                         fit <- stats::lm(y ~ ., data = df, na.action = stats::na.omit)
                          list(Q = stats::predict(fit, newdata = pcX),
                               coeffs = fit$coefficients,
                               sigma = stats::sigma(fit))
@@ -93,8 +93,8 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
 #' @return A vector of prediction.
 #' @export
 one_pcr_cv <- function(df, z) {
-  fit <- lm(y ~ ., data = df[-z])
-  predict(fit, newdata = df)
+  fit <- stats::lm(y ~ ., data = df[-z])
+  stats::predict(fit, newdata = df)
 }
 
 #' Cross validation of PCR reconstruction.
@@ -184,7 +184,7 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
 #' * cv: the cross-validation results of the choice, see [cvPCR] for details.
 #' * all.metrics: all members' scores, and if `agg.type == 'best overall'`, the ensemble average's scores as well, in the last column.
 #' @export
-PCR_ensemble_selection <- function(Qa, pc.list, start.year, transform = 'log', Z = NULL,
+PCR_ensemble_selection <- function(Qa, pc, start.year, transform = 'log', Z = NULL,
                                    agg.type = c('best member', 'best overall'),
                                    criterion = c('RE', 'CE', 'nRMSE', 'KGE'),
                                    return.all.metrics = FALSE) {
@@ -194,7 +194,7 @@ PCR_ensemble_selection <- function(Qa, pc.list, start.year, transform = 'log', Z
   if (!(criterion %in% c('RE', 'CE', 'nRMSE', 'KGE')))
     stop('Criterion must be either RE, CE, nRMSE or KGE')
 
-  memberCV <- lapply(pc.list, function(pc) cvPCR(Qa, pc, start.year, transform, Z))
+  memberCV <- lapply(pc, function(pcX) cvPCR(Qa, pcX, start.year, transform, Z))
   memberMetrics <- sapply(memberCV, '[[', 'metrics')
   bestMember <- which.max(memberMetrics[criterion, ])
 
@@ -202,7 +202,7 @@ PCR_ensemble_selection <- function(Qa, pc.list, start.year, transform = 'log', Z
     ans <- list(choice = bestMember, cv = memberCV[[bestMember]])
     if (return.all.metrics) ans$all.metrics <- memberMetrics
   } else {
-    ensembleCV <- cvPCR(Qa, pc.list, start.year, transform, Z)
+    ensembleCV <- cvPCR(Qa, pc, start.year, transform, Z)
     ensembleMetrics <- ensembleCV$metrics
     ans <- if (ensembleMetrics[criterion] > memberMetrics[criterion, bestMember]) {
       list(choice = 0, cv = ensembleCV)

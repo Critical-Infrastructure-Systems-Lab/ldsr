@@ -29,7 +29,7 @@ Mstep <- function(y, u, v, fit) {
 #' Estimate the hidden state and model parameters given observations and exogenous inputs using the EM algorithm. This is the key backend routine of this package.
 #'
 #' @inheritParams Kalman_smoother
-#' @param init A vector of initial values for the parameters
+#' @param theta0 A vector of initial values for the parameters
 #' @param niter Maximum number of iterations, default 1000
 #' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized
 #' @return A list of model results
@@ -73,6 +73,7 @@ NSE <- function(yhat, y) {
 #' RMSE is normalized by the normalization constant
 #' @param yhat Model outputs
 #' @param y Observations
+#' @param normConst The normalization constant
 #' @return normalized RMSE
 #' @export
 nRMSE <- function(yhat, y, normConst) {

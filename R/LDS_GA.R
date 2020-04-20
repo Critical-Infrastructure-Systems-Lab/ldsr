@@ -24,7 +24,6 @@ vec_to_list <- function(theta.vec, d) {
 #' in \code{Kalman_smoother})
 #' @param lambda weight of the penalty
 #' @return The penalized likelihood (a real number)
-#' @export
 penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
 
   theta.list <- vec_to_list(theta.vec, nrow(u))
@@ -48,8 +47,8 @@ penalized_likelihood <- function(y, u, v, theta.vec, lambda) {
 #' **Warning** This is an experimental feature. Use with care.
 #' @inheritParams LDS_reconstruction
 #' @param y Transformed and standardized streamflow
-#'
-
+#' @param parallel Logical, whether parallel computation is used
+#' @param lambda weight for penalty
 LDS_GA <- function(y, u, v, lambda = 1, ub, lb, num.islands = 4, pop.per.island = 100, niter = 1000, parallel = TRUE) {
 
   # Run genetic algorithm
@@ -85,27 +84,22 @@ LDS_GA <- function(y, u, v, lambda = 1, ub, lb, num.islands = 4, pop.per.island 
 #' **Warning** This is an experimental feature. Use with care.
 #' @inheritParams LDS_GA
 #' @inheritParams LDS_reconstruction
-#' @export
 LDS_BFGS_with_update <- function(y, u, v, lambda = 1, ub, lb, num.restarts = 100, parallel = TRUE) {
 
   d <- nrow(u)
   # Initial guess for L-BFGS-B
   par.list <- replicate(num.restarts,
-                        runif(d + d + 6, min = lb, max = ub),
+                        stats::runif(d + d + 6, min = lb, max = ub),
                         simplify = FALSE)
   # Non-standard call issue in R CMD check
   par <- NULL
   if (parallel) {
-    nbCores <- detectCores() - 1
-    cl <- makeCluster(nbCores)
-    registerDoParallel(cl)
     optim.result <- foreach(par = par.list, .packages = 'stats') %dopar%
       stats::optim(par,
                    function(theta) -penalized_likelihood(y, u, v, theta, lambda),
                    method = 'L-BFGS-B',
                    lower = lb,
                    upper = ub)
-    stopCluster(cl)
   } else {
     optim.result <- lapply(par.list, function(par)
       stats::optim(par,
@@ -155,24 +149,16 @@ ssqTrain <- function(theta, u, v, y) {
 #' **Warning** This is an experimental feature. Use with care.
 #' @inheritParams LDS_GA
 #' @inheritParams LDS_reconstruction
-#' @export
 LDS_BFGS <- function(y, u, v, ub, lb, num.restarts = 100, parallel = TRUE) {
 
   d <- nrow(u)
   # Initial guess for L-BFGS-B
   par.list <- replicate(num.restarts,
-                        runif(d + d + 6, min = lb, max = ub),
+                        stats::runif(d + d + 6, min = lb, max = ub),
                         simplify = FALSE)
 
-  # par <- NULL
-  if (parallel) {
-    `%DO%` <- foreach:::`%dopar%`
-    nbCores <- detectCores() - 1
-    cl <- makeCluster(nbCores)
-    registerDoParallel(cl)
-  } else {
-    `%DO%` <- foreach:::`%do%`
-  }
+  par <- NULL
+  `%DO%` <- if (parallel) foreach::`%dopar%` else foreach::`%do%`
   # REMEMBER: optim() only accepts vector for par
   optim.result <- foreach(par = par.list, .packages = 'stats') %DO%
     stats::optim(par,
@@ -180,7 +166,6 @@ LDS_BFGS <- function(y, u, v, ub, lb, num.restarts = 100, parallel = TRUE) {
                  method = 'L-BFGS-B',
                  lower = lb,
                  upper = ub)
-  if (parallel) stopCluster(cl)
 
   optim.vals <- sapply(optim.result, '[[', 'value')
   best <- which.max(optim.vals)

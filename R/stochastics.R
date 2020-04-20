@@ -17,10 +17,10 @@ one_LDS_rep <- function(rep.num, theta, u = NULL, v = NULL, years, mu = 0, exp.t
     n <- length(years)
     sim.X <- matrix(0, 1, n + 1)
     sim.Y <- matrix(0, 1, n)
-    sim.X[, 1] <- rnorm(1, 0, sqrt(theta$V1))
+    sim.X[, 1] <- stats::rnorm(1, 0, sqrt(theta$V1))
 
-    q <- t(rnorm(n, 0, sqrt(theta$Q)))
-    r <- t(rnorm(n, 0, sqrt(theta$R)))
+    q <- t(stats::rnorm(n, 0, sqrt(theta$Q)))
+    r <- t(stats::rnorm(n, 0, sqrt(theta$R)))
 
     if (is.null(u)) {
         for (t in 1:n) {

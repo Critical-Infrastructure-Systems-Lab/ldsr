@@ -12,10 +12,10 @@ make_init <- function(p, q, num.restarts) {
 
   replicate(num.restarts,
             {
-              theta <- list(A = matrix(runif(1)),
-                            B = matrix(runif(p, -1, 1), nrow = 1),
-                            C = matrix(runif(1)),
-                            D = matrix(runif(q, -1, 1), nrow = 1),
+              theta <- list(A = matrix(stats::runif(1)),
+                            B = matrix(stats::runif(p, -1, 1), nrow = 1),
+                            C = matrix(stats::runif(1)),
+                            D = matrix(stats::runif(q, -1, 1), nrow = 1),
                             Q = matrix(1),
                             R = matrix(1),
                             mu1 = matrix(0),
@@ -30,6 +30,7 @@ make_init <- function(p, q, num.restarts) {
 #'
 #' This is the backend computation for [LDS_reconstruction].
 #' @inheritParams LDS_EM
+#' @param init A list of initial parameters for the EM search. See [make_init].
 #' @param niter Maximum number of iterations, default 1000
 #' @param tol Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.
 #' @param return.init Indicate whether the initial condition that results in the highest
@@ -61,8 +62,8 @@ LDS_EM_restart <- function(y, u, v, init, niter = 1000, tol = 1e-5, return.init 
 #'
 #' Call a reconstruction method subroutine according to the method required
 #' @inheritParams LDS_reconstruction
+#' @param y Catchment output, preprocessed from data
 #' @return The results as produced by `LDS_EM_restart()` when the default method (EM) is called. Other methods are experimental.
-
 call_method <- function(y, u, v, method, init, num.restarts, return.init,
                         ub, lb, num.islands, pop.per.island,
                         niter, tol) {
@@ -74,7 +75,7 @@ call_method <- function(y, u, v, method, init, num.restarts, return.init,
          BFGS = LDS_BFGS(y, u, v, ub, lb, num.restarts, parallel = FALSE),
          BFGS_smooth = {
            fit1 <- LDS_BFGS(y, u, v, ub, lb, num.restarts, parallel = FALSE)
-           fit2 <- ldsr:::Kalman_smoother(y, u, v, fit1$theta)
+           fit2 <- Kalman_smoother(y, u, v, fit1$theta)
            fit1$fit <- fit2
            fit1$lik <- fit2$lik
            fit1
@@ -138,10 +139,12 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
       v <- replicate(length(u), matrix(0))
       N <- ncol(u[[1]])
     } else { # both are provided
-      if (!identical(sapply(u, ncol), sapply(v, ncol))) stop('u and v must have the same number of time steps.')
+      if (!identical(sapply(u, ncol), sapply(v, ncol)))
+        stop('u and v must have the same number of time steps.')
       N <- ncol(u[[1]])
     }
-    if (is.null(init)) init <- lapply(seq_along(u), function(i) make_init(nrow(u[[i]]), nrow(v[[i]]), num.restarts))
+    if (is.null(init))
+      init <- lapply(seq_along(u), function(i) make_init(nrow(u[[i]]), nrow(v[[i]]), num.restarts))
   }
 
   Qa <- as.data.table(Qa)
@@ -224,20 +227,19 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
     format_results(results, u, v)
   } else {
     # Otherwise, we can parallelize at the u level
-
+    i <- Q <- X <- NULL
     ensemble <- foreach(i = seq_along(u), .packages = 'ldsr') %dopar% {
       results <- call_method(y, u[[i]], v[[i]], method, init[[i]], num.restarts, return.init,
                              ub, lb, num.islands, pop.per.island, niter, tol)
       format_results(results, u[[i]], v[[i]])
     }
-
-    rec <- rbindlist(lapply(ensemble, function(x) x$rec[, .(year, X, Q)]))
-    rec <- rec[, .(X = mean(X), Q = mean(Q)), by = year]
+    rec <- rbindlist(lapply(ensemble, function(x) x$rec[, list(year, X, Q)]))
+    rec <- rec[, list(X = mean(X), Q = mean(Q)), by = year]
     ans <- list(rec = rec, ensemble = ensemble)
 
     if (return.raw) {
-      rec.raw <- rbindlist(lapply(ensemble, function(x) x$rec2[, .(year, X, Q)]))
-      rec.raw <- rec.raw[, .(X = mean(X), Q = mean(Q)), by = year]
+      rec.raw <- rbindlist(lapply(ensemble, function(x) x$rec2[, list(year, X, Q)]))
+      rec.raw <- rec.raw[, list(X = mean(X), Q = mean(Q)), by = year]
       ans$rec.raw <- rec.raw
     }
     ans
@@ -249,7 +251,9 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
 #' Make one prediction for one cross-validation run. This is a subroutine to be called by other cross-validation functions.
 #' @param z A vector of left-out points, indexed according to the intrumental period
 #' @param instPeriod indices of the instrumental period in the whole record
-#' @inheritParams LDS_reconstruction
+#' @param mu Mean of the observations
+#' @inheritParams cvLDS
+#' @inheritParams call_method
 #' @return A vector of prediction.
 #' @export
 one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts = 20,
@@ -273,6 +277,7 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
 #'
 #' @inheritParams LDS_reconstruction
 #' @inheritParams cvPCR
+#' @param use.raw Whether performance metrics are calculated on the raw time series. Experimental; don't use.
 #' @export
  cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log', num.restarts = 50,
                    Z = make_Z(Qa$Qa), metric.space = 'transformed', use.raw = FALSE,
@@ -333,6 +338,7 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
            obs - mu,     # Instrumental period
            rep(NA, end.year - Qa[.N, year]))) # After the instrumental period
 
+  i <- z <- NULL
   Ycv <- if (single) {
     foreach(z = Z, .packages = 'ldsr') %dopar%
       one_lds_cv(z, instPeriod, mu, y, u, v, method, num.restarts,
