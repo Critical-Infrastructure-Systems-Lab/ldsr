@@ -14,7 +14,7 @@ y <- t(obs - mu)
 N <- 85
 
 uInst <- vInst <- t(ldsr:::P1pc[322:406])
-u <- v <- t(NPpc)
+u <- v <- t(NPpc[601:813])
 
 test_that("Numerical results are correct for the instrumental period in the first two iterations for P1", {
   smooth1 <- ldsr:::Kalman_smoother(y, uInst, vInst, theta0)
@@ -39,37 +39,37 @@ test_that("Convergence is correct for the instrumental period", {
 })
 
 test_that("Fixed restart works", {
-  fit <- LDS_reconstruction(NPannual, u, v, start.year = 1200, init = make_init(nrow(u), nrow(v), 2))
+  fit <- LDS_reconstruction(NPannual, u, v, start.year = 1800, init = make_init(nrow(u), nrow(v), 2))
   expect_is(fit, "list")
 })
 
 test_that("Randomized restarts works", {
-  fit <- LDS_reconstruction(NPannual, u, v, start.year = 1200, num.restarts = 2)
+  fit <- LDS_reconstruction(NPannual, u, v, start.year = 1800, num.restarts = 2)
   expect_is(fit, "list")
 })
 
 test_that("Cross validation works with randomized restarts", {
-  cv <- cvLDS(NPannual, u, v, start.year = 1200, num.restarts = 2, Z = make_Z(NPannual$Qa, 2))
+  cv <- cvLDS(NPannual, u, v, start.year = 1800, num.restarts = 2, Z = make_Z(NPannual$Qa, 2))
   expect_is(cv, "list")
 })
 
 test_that("u can be NULL", {
-  fit <- LDS_reconstruction(NPannual, u = NULL, v, start.year = 1200, num.restarts = 2)
+  fit <- LDS_reconstruction(NPannual, u = NULL, v, start.year = 1800, num.restarts = 2)
   expect_is(fit, "list")
-  cv <- cvLDS(NPannual, u = NULL, v, start.year = 1200, num.restarts = 2, Z = make_Z(NPannual$Qa, 2))
+  cv <- cvLDS(NPannual, u = NULL, v, start.year = 1800, num.restarts = 2, Z = make_Z(NPannual$Qa, 2))
   expect_is(cv, "list")
 })
 
 test_that("v can be NULL", {
-  fit <- LDS_reconstruction(NPannual, u, v = NULL, start.year = 1200, num.restarts = 2)
+  fit <- LDS_reconstruction(NPannual, u, v = NULL, start.year = 1800, num.restarts = 2)
   expect_is(fit, "list")
-  cv <- cvLDS(NPannual, u, v = NULL, start.year = 1200, num.restarts = 2, Z = make_Z(NPannual$Qa, 2))
+  cv <- cvLDS(NPannual, u, v = NULL, start.year = 1800, num.restarts = 2, Z = make_Z(NPannual$Qa, 2))
   expect_is(cv, "list")
 })
 
 test_that("u and v can have different nrows", {
-  fit <- LDS_reconstruction(NPannual, u[1:2, ], v, start.year = 1200, num.restarts = 2)
+  fit <- LDS_reconstruction(NPannual, u[1:2, ], v, start.year = 1800, num.restarts = 2)
   expect_is(fit, "list")
-  cv <- cvLDS(NPannual, u[1:2, ], v, start.year = 1200, num.restarts = 2, Z = make_Z(NPannual$Qa, 2))
+  cv <- cvLDS(NPannual, u[1:2, ], v, start.year = 1800, num.restarts = 2, Z = make_Z(NPannual$Qa, 2))
   expect_is(cv, "list")
 })
