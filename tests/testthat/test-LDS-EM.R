@@ -16,6 +16,8 @@ N <- 85
 uInst <- vInst <- t(ldsr:::P1pc[322:406])
 u <- v <- t(NPpc[601:813])
 
+foreach::registerDoSEQ()
+
 test_that("Numerical results are correct for the instrumental period in the first two iterations for P1", {
   smooth1 <- ldsr:::Kalman_smoother(y, uInst, vInst, theta0)
   theta1 <- ldsr:::Mstep(y, uInst, vInst, smooth1)
