@@ -6,6 +6,8 @@ using namespace Rcpp;
 //' @param yhat Model outputs
 //' @param y Observations
 //' @return NSE
+//' @examples
+//' NSE(rnorm(100), rnorm(100))
 //' @export
 //[[Rcpp::export]]
 double NSE(NumericVector yhat, NumericVector y) {
@@ -25,6 +27,10 @@ double NSE(NumericVector yhat, NumericVector y) {
 //' @param y Observations
 //' @param normConst The normalization constant
 //' @return normalized RMSE
+//' @examples
+//' x <- rnorm(100)
+//' y <- rnorm(100)
+//' nRMSE(x, y, sd(y))
 //' @export
 //[[Rcpp::export]]
 double nRMSE(NumericVector yhat, NumericVector y, double normConst) {
@@ -55,6 +61,8 @@ double corr(NumericVector x, NumericVector y) {
 //' @param yhat Model outputs
 //' @param y Observations
 //' @return KGE
+//' @examples
+//' KGE(rnorm(100), rnorm(100))
 //' @export
 //[[Rcpp::export]]
 double KGE(NumericVector yhat, NumericVector y) {
@@ -75,6 +83,11 @@ double KGE(NumericVector yhat, NumericVector y) {
 //' @param y Observations in the validation set
 //' @param yc_bar Mean observations in the calibration set
 //' @return RE
+//' @examples
+//' x <- rnorm(100)
+//' y <- rnorm(100)
+//' yc_bar <- mean(x[1:50])
+//' RE(x[51:100], y[51:100], yc_bar)
 //' @export
 //[[Rcpp::export]]
 double RE(NumericVector yhat, NumericVector y, double yc_bar) {

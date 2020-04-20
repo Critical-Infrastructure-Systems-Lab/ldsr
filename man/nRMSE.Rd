@@ -19,3 +19,8 @@ normalized RMSE
 \description{
 RMSE is normalized by the normalization constant
 }
+\examples{
+x <- rnorm(100)
+y <- rnorm(100)
+nRMSE(x, y, sd(y))
+}

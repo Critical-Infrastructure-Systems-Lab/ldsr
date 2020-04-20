@@ -14,6 +14,8 @@
 #' * rec: the ensemble average reconstruction; a data.table with two columns: year and Q.
 #' * ensemble: a list of ensemble members, each element is reconstructed from one element of `pc` and is itself a list of three elements: Q (a vector of reconstructed flow), coeffs and sigma.
 #' Note that for ensemble reconstruction, `ldsr` does not provide uncertainty estimates. It is up to the user to do so, for example, using ensemble spread.
+#' @examples
+#' PCR_reconstruction(NPannual, NPpc, start.year = 1200)
 #' @export
 PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
 
@@ -107,7 +109,9 @@ one_pcr_cv <- function(df, z) {
 #' * metrics: average performance metrics; a named vector.
 #' * obs: the (transformed) observations, a data.table with two columns (year, y)
 #' * Ycv: the predicted streamflow in each cross validation run; a matrix, one column for each cross-validation run
-#' * Z: the cross-validation folds
+#' * Z: the cross-validation fold
+#' @examples
+#' cvPCR(NPannual, NPpc, start.year = 1200)
 #' @export
 cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space = 'transformed') {
 
@@ -174,7 +178,7 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
 
 #' Select the best reconstruction
 #'
-#' Select the best reconstruction from an ensemble.
+#' Select the best reconstruction from an ensemble. Experimental, API may change.
 #' @inheritParams cvPCR
 #' @param agg.type Type of ensemble aggregate. There are 2 options: 'best member': the member with the best performance score is used; 'best overall': if the ensemble average is better than the best member, it will be used, otherwise the best member will be used.
 #' @param criterion The performance criterion to be used.
@@ -183,6 +187,11 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
 #' * choice: The index of the selection. If the ensemble is selected, returns 0.
 #' * cv: the cross-validation results of the choice, see [cvPCR] for details.
 #' * all.metrics: all members' scores, and if `agg.type == 'best overall'`, the ensemble average's scores as well, in the last column.
+#' @examples
+#' PCR_ensemble_selection(NPannual, list(NPpc, NPpc[, 1:2]), start.year = 1200,
+#'                        agg.type = 'best overall', criterion = 'KGE')
+#' PCR_ensemble_selection(NPannual, list(NPpc, NPpc[, 1:2]), start.year = 1200,
+#'                        agg.type = 'best overall', criterion = 'KGE')
 #' @export
 PCR_ensemble_selection <- function(Qa, pc, start.year, transform = 'log', Z = NULL,
                                    agg.type = c('best member', 'best overall'),
@@ -195,8 +204,8 @@ PCR_ensemble_selection <- function(Qa, pc, start.year, transform = 'log', Z = NU
     stop('Criterion must be either RE, CE, nRMSE or KGE')
 
   memberCV <- lapply(pc, function(pcX) cvPCR(Qa, pcX, start.year, transform, Z))
-  memberMetrics <- sapply(memberCV, '[[', 'metrics')
-  bestMember <- which.max(memberMetrics[criterion, ])
+  memberMetrics <- rbindlist(lapply(memberCV, '[[', 'metrics'))
+  bestMember <- memberMetrics[, which.max(get(criterion))]
 
   if (agg.type == 'best member') {
     ans <- list(choice = bestMember, cv = memberCV[[bestMember]])
@@ -204,7 +213,7 @@ PCR_ensemble_selection <- function(Qa, pc, start.year, transform = 'log', Z = NU
   } else {
     ensembleCV <- cvPCR(Qa, pc, start.year, transform, Z)
     ensembleMetrics <- ensembleCV$metrics
-    ans <- if (ensembleMetrics[criterion] > memberMetrics[criterion, bestMember]) {
+    ans <- if (ensembleMetrics[, get(criterion)] > memberMetrics[bestMember, get(criterion)]) {
       list(choice = 0, cv = ensembleCV)
     } else {
       list(choice = bestMember, cv = memberCV[[bestMember]])

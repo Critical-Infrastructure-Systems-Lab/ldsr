@@ -5,6 +5,11 @@
 #' @param transform Either "log", "exp", "boxcox" or "inv_boxcox"
 #' @param lambda Lambda value used in Box-Cox or inverse Box-Cox
 #' @return A new cv object wit hthe new metrics
+#' @examples
+#' # Cross-validate with log-transform
+#' cv <- cvPCR(NPannual, NPpc, start.year = 1200, transform = 'log', metric.space = 'transformed')
+#' # Calculate metrics based on back-transformed values
+#' m <- metrics_with_transform(cv, 'exp')
 #' @export
 metrics_with_transform <- function(cv, transform, lambda = NULL) {
   Ycv <- copy(cv$Ycv)
@@ -44,6 +49,9 @@ metrics_with_transform <- function(cv, transform, lambda = NULL) {
 #' @param z A vector of left out indices in cross validation
 #' @param norm.fun The function (unquoted name) used to calculate the normalizing constant. Default is `mean()`, but other functions such as `sd()` can also be used. THe function must take a vector as input and return a scalar as output, and must have an argument `na.rm = TRUE`.
 #' @return A named vector of performance metrics
+#' @examples
+#' calculate_metrics(rnorm(100), rnorm(100), z = 1:10)
+#' calculate_metrics(rnorm(100), rnorm(100), z = 1:10, norm.fun = sd)
 #' @export
 calculate_metrics <- function(sim, obs, z, norm.fun = mean) {
     train.obs <- obs[-z]
@@ -69,6 +77,8 @@ calculate_metrics <- function(sim, obs, z, norm.fun = mean) {
 #' @param frac Fraction of left-out points. For leave-one-out, use `frac = 1`, otherwise use any value less than 1. Default is 0.1 (leave-10%-out).
 #' @param contiguous Logical. If `TRUE`, the default, the left-out points are made in contiguous blocks; otherwise, they are scattered randomly.
 #' @return A list of cross-validation folds
+#' @examples
+#' Z <- make_Z(NPannual, nRuns = 30, frac = 0.25, contiguous = TRUE)
 #' @export
 make_Z <- function(obs, nRuns = 30, frac = 0.1, contiguous = TRUE) {
   obsInd <- which(!is.na(obs))
@@ -95,6 +105,9 @@ make_Z <- function(obs, nRuns = 30, frac = 0.1, contiguous = TRUE) {
 #' @param x A numeric vector to be transformed
 #' @param lambda Lambda parameter
 #' @return The inverse Box-Cox
+#' @examples
+#' inv_boxcox(x = rnorm(10), lambda = 1)
+#' inv_boxcox(x = rnorm(10), lambda = 0) # exp(x)
 #' @export
 inv_boxcox <- function(x, lambda) {
   if (lambda == 0) exp(x) else (x*lambda + 1)^(1/lambda)

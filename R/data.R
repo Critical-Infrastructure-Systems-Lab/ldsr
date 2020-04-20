@@ -16,3 +16,9 @@
 #'
 #' @format A data.table
 "NPpc"
+
+#' LDS parameters
+#'
+#' Theta values for Nakhon Phanom, precomputed to use in examples.
+#' @format A list with elements A, B, C, D, Q, R, mu1, V1
+"theta"

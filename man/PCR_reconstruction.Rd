@@ -36,3 +36,6 @@ Note that for ensemble reconstruction, \code{ldsr} does not provide uncertainty 
 \description{
 Reconstruction with principal component linear regression.
 }
+\examples{
+PCR_reconstruction(NPannual, NPpc, start.year = 1200)
+}

@@ -41,5 +41,11 @@ A list of two elements:
 }
 }
 \description{
-Select the best reconstruction from an ensemble.
+Select the best reconstruction from an ensemble. Experimental, API may change.
+}
+\examples{
+PCR_ensemble_selection(NPannual, list(NPpc, NPpc[, 1:2]), start.year = 1200,
+                       agg.type = 'best overall', criterion = 'KGE')
+PCR_ensemble_selection(NPannual, list(NPpc, NPpc[, 1:2]), start.year = 1200,
+                       agg.type = 'best overall', criterion = 'KGE')
 }

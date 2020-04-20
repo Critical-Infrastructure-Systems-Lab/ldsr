@@ -9,7 +9,7 @@
 Streamflow (and climate) reconstruction using Linear Dynamical Systems. 
     The advantage of this method is the additional state trajectory which can reveal more information 
     about the catchment or climate system. For details of the method please refer to Nguyen and Galelli 
-    (2018) <doi:10.1002/2017WR022114>
+    (2018) <doi:10.1002/2017WR022114>.
 }
 \seealso{
 Useful links:

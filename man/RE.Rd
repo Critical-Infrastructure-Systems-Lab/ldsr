@@ -19,3 +19,9 @@ RE
 \description{
 Reduction of Error
 }
+\examples{
+x <- rnorm(100)
+y <- rnorm(100)
+yc_bar <- mean(x[1:50])
+RE(x[51:100], y[51:100], yc_bar)
+}

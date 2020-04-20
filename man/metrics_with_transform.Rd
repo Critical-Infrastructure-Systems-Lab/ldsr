@@ -19,3 +19,9 @@ A new cv object wit hthe new metrics
 \description{
 If you already ran the cross-validation on transformed output and now wanted to calculate performance on the back-transformed one, or vice-versa, you don't have to rerun the whole cross-validation, but just need to transform or back-transform the cross-validation Ycv. This function helps you do that.
 }
+\examples{
+# Cross-validate with log-transform
+cv <- cvPCR(NPannual, NPpc, start.year = 1200, transform = 'log', metric.space = 'transformed')
+# Calculate metrics based on back-transformed values
+m <- metrics_with_transform(cv, 'exp')
+}

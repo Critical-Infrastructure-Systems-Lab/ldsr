@@ -54,7 +54,6 @@ LDS_EM <- function(y, u, v, theta0, niter = 1000L, tol = 1e-5) {
 #' @param stdlik Boolean, whether the likelihood is divided by the number of observations. Standardizing the likelihood this way may speed up convergence in the case of long time series.
 #' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 #' @return A list of predictions and log-likelihood (X, Y, V, lik)
-#' @export
 propagate <- function(theta, u, v, y, stdlik = TRUE) {
     .Call(`_ldsr_propagate`, theta, u, v, y, stdlik)
 }
@@ -64,6 +63,8 @@ propagate <- function(theta, u, v, y, stdlik = TRUE) {
 #' @param yhat Model outputs
 #' @param y Observations
 #' @return NSE
+#' @examples
+#' NSE(rnorm(100), rnorm(100))
 #' @export
 NSE <- function(yhat, y) {
     .Call(`_ldsr_NSE`, yhat, y)
@@ -76,6 +77,10 @@ NSE <- function(yhat, y) {
 #' @param y Observations
 #' @param normConst The normalization constant
 #' @return normalized RMSE
+#' @examples
+#' x <- rnorm(100)
+#' y <- rnorm(100)
+#' nRMSE(x, y, sd(y))
 #' @export
 nRMSE <- function(yhat, y, normConst) {
     .Call(`_ldsr_nRMSE`, yhat, y, normConst)
@@ -97,6 +102,8 @@ corr <- function(x, y) {
 #' @param yhat Model outputs
 #' @param y Observations
 #' @return KGE
+#' @examples
+#' KGE(rnorm(100), rnorm(100))
 #' @export
 KGE <- function(yhat, y) {
     .Call(`_ldsr_KGE`, yhat, y)
@@ -108,6 +115,11 @@ KGE <- function(yhat, y) {
 #' @param y Observations in the validation set
 #' @param yc_bar Mean observations in the calibration set
 #' @return RE
+#' @examples
+#' x <- rnorm(100)
+#' y <- rnorm(100)
+#' yc_bar <- mean(x[1:50])
+#' RE(x[51:100], y[51:100], yc_bar)
 #' @export
 RE <- function(yhat, y, yc_bar) {
     .Call(`_ldsr_RE`, yhat, y, yc_bar)

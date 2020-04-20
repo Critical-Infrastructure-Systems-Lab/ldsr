@@ -133,7 +133,6 @@ LDS_BFGS_with_update <- function(y, u, v, lambda = 1, ub, lb, num.restarts = 100
 #' @param v Input matrix
 #' @param y Observations
 #' @return The negative log-likelihood
-#' @export
 negLogLik <- function(theta, u, v, y) {
 
   theta <- vec_to_list(theta, nrow(u))

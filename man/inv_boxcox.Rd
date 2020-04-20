@@ -17,3 +17,7 @@ The inverse Box-Cox
 \description{
 Inverse Box-Cox transform
 }
+\examples{
+inv_boxcox(x = rnorm(10), lambda = 1)
+inv_boxcox(x = rnorm(10), lambda = 0) # exp(x)
+}

@@ -7,6 +7,9 @@
 #' @param q Dimension of v
 #' @param num.restarts Number of randomized initial values
 #' @return A list of initial conditions, each element is an object of class `theta`.
+#' @examples
+#' make_init(5, 5, 1)
+#' make_init(5, 5, 2)
 #' @export
 make_init <- function(p, q, num.restarts) {
 
@@ -28,7 +31,7 @@ make_init <- function(p, q, num.restarts) {
 
 #' Learn LDS model with multiple initial conditions
 #'
-#' This is the backend computation for [LDS_reconstruction].
+#' This is the backend computation for [LDS_reconstruction]. You should not use this directly.
 #' @inheritParams LDS_EM
 #' @param init A list of initial parameters for the EM search. See [make_init].
 #' @param niter Maximum number of iterations, default 1000
@@ -109,6 +112,16 @@ call_method <- function(y, u, v, method, init, num.restarts, return.init,
 #' * theta: model parameters
 #' * lik: maximum likelihood
 #' * init: the initial condition that resulted in the maximum likelihood (if `return.init = TRUE`).
+#' @examples
+#' LDS_reconstruction(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 1)
+#'
+#' \dontrun{
+#' # Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
+#' # doFuture::registerDoFuture()
+#' # future::plan(future::multiprocess)
+#'
+#' LDS_reconstruction(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 20)
+#' }
 #' @export
 LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 'log',
                                init = NULL, num.restarts = 50, return.init = FALSE,
@@ -248,7 +261,7 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
 
 #' One cross-validation run
 #'
-#' Make one prediction for one cross-validation run. This is a subroutine to be called by other cross-validation functions.
+#' Make one prediction for one cross-validation run. This is a subroutine that is called by cvLDS, without any checks. You should not need to use this directly.
 #' @param z A vector of left-out points, indexed according to the intrumental period
 #' @param instPeriod indices of the instrumental period in the whole record
 #' @param mu Mean of the observations
@@ -284,7 +297,18 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
 #' * metrics: average performance metrics; a named vector.
 #' * target: the (transformed) observations used for cross-validation; a data.table with two columns (year, y)
 #' * Ycv: the predicted streamflow in each cross validation run; a matrix, one column for each cross-validation run
-#' * Z: the cross-validation folds
+#' * Z: the cross-validation
+#' @examples
+#' cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 1,
+#'       Z = make_Z(NPannual$Qa, nRuns = 1))
+#'
+#' \dontrun{
+#' # Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
+#' # doFuture::registerDoFuture()
+#' # future::plan(future::multiprocess)
+#'
+#' cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 20)
+#' }
 #' @export
  cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log', num.restarts = 50,
                    Z = make_Z(Qa$Qa), metric.space = 'transformed', use.raw = FALSE,

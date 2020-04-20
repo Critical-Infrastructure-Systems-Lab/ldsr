@@ -11,6 +11,9 @@
 #' @return A data.table. The first column is the years of the study horizon, as supplied by `year`.
 #' Subsequent columns are `simX`, `simY`, and `simQ` which are the simulated catchment state (X),
 #' log-transformed and centralized flow (Y) and flow (Q). The last column is the replicate ID number.
+#' @examples
+#' # Learn theta
+#' one_LDS_rep(1, theta, t(NPpc), t(NPpc), 1200:2012, mu = mean(log(NPannual$Qa)))
 #' @export
 one_LDS_rep <- function(rep.num, theta, u = NULL, v = NULL, years, mu = 0, exp.trans = TRUE) {
 
@@ -45,14 +48,16 @@ one_LDS_rep <- function(rep.num, theta, u = NULL, v = NULL, years, mu = 0, exp.t
 
 #' Multiple LDS replicates
 #'
-#' Generate multiple stochastic time series from an LDS model
+#' Generate multiple stochastic time series from an LDS model. This is a convenient wrapper for [one_LDS_rep].
 #' @inheritParams one_LDS_rep
 #' @param num.reps The number of stochastic replicates#'
 #' @return Same as [one_LDS_rep], but the data.table consists of multiple replicates.
+#' @examples
+#' LDS_rep(theta, t(NPpc), t(NPpc), 1200:2012, num.reps = 10, mu = mean(log(NPannual$Qa)))
 #' @export
 LDS_rep <- function(theta, u = NULL, v = NULL, years, num.reps = 100, mu = 0, exp.trans = TRUE) {
 
-    rbindlist(lapply(1:num.reps,
+    rbindlist(lapply(seq_len(num.reps),
                      function(i) one_LDS_rep(i, theta, u, v, years, mu, exp.trans)))
 
 }

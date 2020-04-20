@@ -17,3 +17,6 @@ KGE
 \description{
 Kling-Gupta Efficiency
 }
+\examples{
+KGE(rnorm(100), rnorm(100))
+}

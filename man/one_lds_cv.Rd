@@ -57,5 +57,5 @@ one_lds_cv(
 A vector of prediction.
 }
 \description{
-Make one prediction for one cross-validation run. This is a subroutine to be called by other cross-validation functions.
+Make one prediction for one cross-validation run. This is a subroutine that is called by cvLDS, without any checks. You should not need to use this directly.
 }

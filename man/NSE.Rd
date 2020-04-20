@@ -17,3 +17,6 @@ NSE
 \description{
 Nash-Sutcliffe Efficiency
 }
+\examples{
+NSE(rnorm(100), rnorm(100))
+}

@@ -25,5 +25,5 @@ LDS_EM_restart(y, u, v, init, niter = 1000, tol = 1e-05, return.init = TRUE)
 a list as produced by \link{LDS_EM}. If return.init is true, a vector of initial condition is included in the list as well.
 }
 \description{
-This is the backend computation for \link{LDS_reconstruction}.
+This is the backend computation for \link{LDS_reconstruction}. You should not use this directly.
 }

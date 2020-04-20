@@ -21,3 +21,7 @@ A named vector of performance metrics
 \description{
 Calculate reconstruction metrics from the instrumental period
 }
+\examples{
+calculate_metrics(rnorm(100), rnorm(100), z = 1:10)
+calculate_metrics(rnorm(100), rnorm(100), z = 1:10, norm.fun = sd)
+}

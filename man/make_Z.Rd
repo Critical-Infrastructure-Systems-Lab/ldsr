@@ -21,3 +21,6 @@ A list of cross-validation folds
 \description{
 Make a list of cross-validation folds. Each element of the list is a vector of the cross-validation points for one cross-validation run.
 }
+\examples{
+Z <- make_Z(NPannual, nRuns = 30, frac = 0.25, contiguous = TRUE)
+}

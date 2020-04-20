@@ -38,3 +38,7 @@ log-transformed and centralized flow (Y) and flow (Q). The last column is the re
 \description{
 Generate a single stochastic time series from an LDS model
 }
+\examples{
+# Learn theta
+one_LDS_rep(1, theta, t(NPpc), t(NPpc), 1200:2012, mu = mean(log(NPannual$Qa)))
+}

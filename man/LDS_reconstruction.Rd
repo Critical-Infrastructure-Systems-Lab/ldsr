@@ -78,3 +78,14 @@ A list of the following elements
 \description{
 The initial conditions can either be randomized (specifiled by num.restarts) or provided beforehand.
 }
+\examples{
+LDS_reconstruction(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 1)
+
+\dontrun{
+# Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
+# doFuture::registerDoFuture()
+# future::plan(future::multiprocess)
+
+LDS_reconstruction(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 20)
+}
+}

@@ -291,7 +291,6 @@ List LDS_EM(arma::mat y, arma::mat u, arma::mat v, List theta0, int niter = 1000
 //' @param stdlik Boolean, whether the likelihood is divided by the number of observations. Standardizing the likelihood this way may speed up convergence in the case of long time series.
 //' @section Note: This code only works on one dimensional state and output at the moment. Therefore, transposing is skipped, and matrix inversion is treated as /, and log(det(Sigma)) is treated as log(Sigma).
 //' @return A list of predictions and log-likelihood (X, Y, V, lik)
-//' @export
 // [[Rcpp::export]]
 List propagate(List theta, arma::mat u, arma::mat v, arma::mat y, bool stdlik = true) {
 

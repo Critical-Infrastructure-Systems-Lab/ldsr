@@ -63,9 +63,21 @@ A list of cross validation results
 \item metrics: average performance metrics; a named vector.
 \item target: the (transformed) observations used for cross-validation; a data.table with two columns (year, y)
 \item Ycv: the predicted streamflow in each cross validation run; a matrix, one column for each cross-validation run
-\item Z: the cross-validation folds
+\item Z: the cross-validation
 }
 }
 \description{
 Cross validate LDS model. This is a wrapper for \link{LDS_reconstruction}
+}
+\examples{
+cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 1,
+      Z = make_Z(NPannual$Qa, nRuns = 1))
+
+\dontrun{
+# Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
+# doFuture::registerDoFuture()
+# future::plan(future::multiprocess)
+
+cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 20)
+}
 }

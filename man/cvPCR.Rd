@@ -33,9 +33,12 @@ A list of cross validation results
 \item metrics: average performance metrics; a named vector.
 \item obs: the (transformed) observations, a data.table with two columns (year, y)
 \item Ycv: the predicted streamflow in each cross validation run; a matrix, one column for each cross-validation run
-\item Z: the cross-validation folds
+\item Z: the cross-validation fold
 }
 }
 \description{
 Cross validation of PCR reconstruction.
+}
+\examples{
+cvPCR(NPannual, NPpc, start.year = 1200)
 }

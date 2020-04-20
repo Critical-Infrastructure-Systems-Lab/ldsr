@@ -21,3 +21,7 @@ If init is a vector, make it a list of one element.
 If init is NULL, randomize it. In this case, the function will randomize the initial value by sampling uniformly within the range for each parameters
 (A in [0, 1], B in [-1, 1], C in [0, 1] and D in [-1, 1]).
 }
+\examples{
+make_init(5, 5, 1)
+make_init(5, 5, 2)
+}

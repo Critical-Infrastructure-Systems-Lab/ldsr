@@ -34,5 +34,8 @@ If TRUE, both Y and Q are returned, otherwise only Y.}
 Same as \link{one_LDS_rep}, but the data.table consists of multiple replicates.
 }
 \description{
-Generate multiple stochastic time series from an LDS model
+Generate multiple stochastic time series from an LDS model. This is a convenient wrapper for \link{one_LDS_rep}.
+}
+\examples{
+LDS_rep(theta, t(NPpc), t(NPpc), 1200:2012, num.reps = 10, mu = mean(log(NPannual$Qa)))
 }
