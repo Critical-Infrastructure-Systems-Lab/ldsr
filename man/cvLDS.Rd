@@ -70,7 +70,10 @@ A list of cross validation results
 Cross validate LDS model. This is a wrapper for \link{LDS_reconstruction}
 }
 \examples{
+# Make a shorter time horizon so that this example runs fast
 u <- v <- t(NPpc[601:813])
+# We run this example without parallelism
+foreach::registerDoSEQ()
 cvLDS(NPannual, u, v, start.year = 1800, num.restarts = 1,
       Z = make_Z(NPannual$Qa, nRuns = 1))
 

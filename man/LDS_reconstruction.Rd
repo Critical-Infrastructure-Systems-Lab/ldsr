@@ -79,7 +79,10 @@ A list of the following elements
 The initial conditions can either be randomized (specifiled by num.restarts) or provided beforehand.
 }
 \examples{
+# Make a shorter time horizon so that this example runs fast
 u <- v <- t(NPpc[601:813])
+# We run this example without parallelism
+foreach::registerDoSEQ()
 LDS_reconstruction(NPannual, u, v, start.year = 1800, num.restarts = 1)
 
 \dontrun{
