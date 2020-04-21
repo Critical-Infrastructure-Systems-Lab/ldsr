@@ -113,7 +113,11 @@ call_method <- function(y, u, v, method, init, num.restarts, return.init,
 #' * lik: maximum likelihood
 #' * init: the initial condition that resulted in the maximum likelihood (if `return.init = TRUE`).
 #' @examples
-#' LDS_reconstruction(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 1)
+#' # Make a shorter time horizon so that this example runs fast
+#' u <- v <- t(NPpc[601:813])
+#' # We run this example without parallelism
+#' foreach::registerDoSEQ()
+#' LDS_reconstruction(NPannual, u, v, start.year = 1800, num.restarts = 1)
 #'
 #' \dontrun{
 #' # Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
@@ -299,7 +303,11 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
 #' * Ycv: the predicted streamflow in each cross validation run; a matrix, one column for each cross-validation run
 #' * Z: the cross-validation
 #' @examples
-#' cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 1,
+#' # Make a shorter time horizon so that this example runs fast
+#' u <- v <- t(NPpc[601:813])
+#' # We run this example without parallelism
+#' foreach::registerDoSEQ()
+#' cvLDS(NPannual, u, v, start.year = 1800, num.restarts = 1,
 #'       Z = make_Z(NPannual$Qa, nRuns = 1))
 #'
 #' \dontrun{
@@ -307,7 +315,7 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
 #' # doFuture::registerDoFuture()
 #' # future::plan(future::multiprocess)
 #'
-#' cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 20)
+#' cvLDS(NPannual, u = t(NPpc), v = t(NPpc), start.year = 1200, num.restarts = 20)
 #' }
 #' @export
  cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log', num.restarts = 50,

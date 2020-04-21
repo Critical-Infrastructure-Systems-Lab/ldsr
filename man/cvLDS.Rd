@@ -70,7 +70,8 @@ A list of cross validation results
 Cross validate LDS model. This is a wrapper for \link{LDS_reconstruction}
 }
 \examples{
-cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 1,
+u <- v <- t(NPpc[601:813])
+cvLDS(NPannual, u, v, start.year = 1800, num.restarts = 1,
       Z = make_Z(NPannual$Qa, nRuns = 1))
 
 \dontrun{
@@ -78,6 +79,6 @@ cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 1,
 # doFuture::registerDoFuture()
 # future::plan(future::multiprocess)
 
-cvLDS(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 20)
+cvLDS(NPannual, u = t(NPpc), v = t(NPpc), start.year = 1200, num.restarts = 20)
 }
 }
