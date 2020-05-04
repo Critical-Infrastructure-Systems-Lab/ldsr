@@ -8,18 +8,14 @@
 
 ## Streamflow Reconstruction Using Linear Dynamical System
 
-A typical streamflow reconstruction model is linear: the relationship between streamflow $y$ and the paleoclimate proxies $u$ is modelled as
+A typical streamflow reconstruction model is linear: the relationship between streamflow *y* and the paleoclimate proxies *u* is modelled as
 
-$$ y_t = \alpha + \beta u_t + \varepsilon_t. $$
+<img src="https://render.githubusercontent.com/render/math?math=y_t = \alpha %2B \beta u_t %2B \varepsilon_t">
 
 Linear models do not account for the catchment state and the catchment memory effect. To model these, we experimented with using the Linear Dynamical System (LDS) model. We model the relationship between streamflow and paleoclimate proxies as follows:
 
-$$
-\begin{align}
-  x_{t+1} &= Ax_t + Bu_t + w_t\\
-      y_t &= Cx_t + Du_t + v_t.
-\end{align}
-$$
+![](https://render.githubusercontent.com/render/math?math=%5Cbegin%7Balign*%7D%20x_%7Bt%2B1%7D%20%3D%20Ax_t%20%2B%20Bu_t%20%2B%20w_t%5C%5C%20y_t%20%3D%20Cx_t%20%2B%20Du_t%20%2B%20v_t%20%5Cend%7Balign*%7D%20)
+
 
 Observe that linear regression is a special case of LDS. The constant term $\alpha$ of linear regression is replaced by a state-dependent term $Cx_t$, and the system state follows a state transition equation.
 
