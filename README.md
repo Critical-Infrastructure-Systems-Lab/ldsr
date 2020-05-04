@@ -2,6 +2,7 @@
 [![Travis build status](https://travis-ci.org/ntthung/ldsr.svg?branch=master)](https://travis-ci.org/ntthung/ldsr)
 [![GPL license](https://img.shields.io/badge/License-GPL-blue.svg)](http://perso.crans.org/besson/LICENSE.html)
 [![GitHub version](https://badge.fury.io/gh/ntthung%2Fldsr.svg)](https://badge.fury.io/gh/ntthung%2Fldsr)
+[![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/ldsr)](https://cran.r-project.org/package=ldsr)
 <!-- badges: end -->
 
 
