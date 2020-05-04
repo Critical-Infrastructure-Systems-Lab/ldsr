@@ -6,24 +6,45 @@
 <!-- badges: end -->
 
 
-# ldsr
+## Streamflow Reconstruction Using Linear Dynamical System
 
-Streamflow reconstruction using linear dynamical system. The method was described in Nguyen and Galelli (2018) and used in Nguyen et al (2019). Please cite Nguyen and Galelli (2018) when using the package.
+A typical streamflow reconstruction model is linear: the relationship between streamflow $y$ and the paleoclimate proxies $u$ is modelled as
 
-To install this package, type the following commands into your RStudio console:
+$$ y_t = \alpha + \beta u_t + \varepsilon_t. $$
+
+Linear models do not account for the catchment state and the catchment memory effect. To model these, we experimented with using the Linear Dynamical System (LDS) model. We model the relationship between streamflow and paleoclimate proxies as follows:
+
+$$
+\begin{align}
+  x_{t+1} &= Ax_t + Bu_t + w_t\\
+      y_t &= Cx_t + Du_t + v_t.
+\end{align}
+$$
+
+Observe that linear regression is a special case of LDS. The constant term $\alpha$ of linear regression is replaced by a state-dependent term $Cx_t$, and the system state follows a state transition equation.
+
+We described the method in full detail, together with a case study for the Ping River (Thailand), in Nguyen and Galelli (2018)---please cite this paper when you use the package. We also used the method to reconstruct streamflow for 48 stations in 16 countries in Asia (Nguyen et al, 2019). 
+
+For a tutorial on how to use the package, please see the [package's vignette](https://cran.r-project.org/web/packages/ldsr/vignettes/ldsr.html)
+
+## Installation
+
+LDS is somewhat computationally heavy. To speed it up, I wrote the core routines in C++, which needs compilation. On Windows, you need to first install Rtools. [For R 4.0.0](https://cran.r-project.org/bin/windows/Rtools/). [For older R](https://cran.r-project.org/bin/windows/Rtools/history.html).
+
+`ldsr` is now available on CRAN, so you can install with
 
 ```
-install.packages('devtools')
-devtools::install_github('ntthung/ldsr', build_vignettes = TRUE)
+install.packages('ldsr')
 ```
 
-Note that if you don't already have Rtools (a set of tools to build packages from sources), RStudio will prompt you to install it. Just follow the instructions. After Rtools installation is complete, type the above `install_github` command again.
+To install the development version
 
-To view the package's vignette, type
+```
+install.packages('remotes')
+remotes::install_github('ntthung/ldsr', build_vignettes = TRUE)
+```
 
-`browseVignettes('ldsr')`
-
-# References
+## References
 
 Nguyen, H. T. T., & Galelli, S. (2018). A linear dynamical systems approach to streamflow reconstruction reveals history of regime shifts in northern Thailand. Water Resources Research, 54, 2057– 2077. https://doi.org/10.1002/2017WR022114 
 
