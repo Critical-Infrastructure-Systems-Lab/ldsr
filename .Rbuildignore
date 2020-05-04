@@ -4,3 +4,9 @@
 ^\.Rproj\.user$
 experiments$
 ^\.travis\.yml$
+examples_i386
+examples_x64
+ldsr-Ex_i386.Rout
+ldsr-Ex_x64.Rout
+tests_i386
+tests_x64
