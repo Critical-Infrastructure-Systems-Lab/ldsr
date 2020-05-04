@@ -35,5 +35,7 @@ Suggests:
     rmarkdown,
     testthat,
     ggplot2,
-    patchwork
+    patchwork,
+    doFuture,
+    future
 VignetteBuilder: knitr

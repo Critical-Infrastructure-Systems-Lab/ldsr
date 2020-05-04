@@ -72,16 +72,9 @@ Cross validate LDS model. This is a wrapper for \link{LDS_reconstruction}
 \examples{
 # Make a shorter time horizon so that this example runs fast
 u <- v <- t(NPpc[601:813])
-# We run this example without parallelism
+# We run this example without parallelism.
 foreach::registerDoSEQ()
-cvLDS(NPannual, u, v, start.year = 1800, num.restarts = 1,
+cvLDS(NPannual, u, v, start.year = 1800, num.restarts = 2,
       Z = make_Z(NPannual$Qa, nRuns = 1))
-
-\dontrun{
-# Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
-# doFuture::registerDoFuture()
-# future::plan(future::multiprocess)
-
-cvLDS(NPannual, u = t(NPpc), v = t(NPpc), start.year = 1200, num.restarts = 20)
-}
+# Please refer to the vignette for the full run with parallel options. It takes a minute or two.
 }

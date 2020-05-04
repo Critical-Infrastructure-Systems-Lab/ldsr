@@ -20,8 +20,7 @@ LDS_reconstruction(
   pop.per.island = 250,
   niter = 1000,
   tol = 1e-05,
-  return.raw = FALSE,
-  nb.cores = 1
+  return.raw = FALSE
 )
 }
 \arguments{
@@ -56,8 +55,6 @@ LDS_reconstruction(
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.}
 
 \item{return.raw}{If TRUE, state and streamflow estimates without measurement updates will be returned.}
-
-\item{nb.cores}{Number of cores to perform the reconstruction. Default is 1 for serial computation. If \code{nb.cores > 1}, parallel computation will be performed using the \code{doFuture} backend.}
 }
 \value{
 A list of the following elements
@@ -84,12 +81,5 @@ u <- v <- t(NPpc[601:813])
 # We run this example without parallelism
 foreach::registerDoSEQ()
 LDS_reconstruction(NPannual, u, v, start.year = 1800, num.restarts = 1)
-
-\dontrun{
-# Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
-# doFuture::registerDoFuture()
-# future::plan(future::multiprocess)
-
-LDS_reconstruction(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 20)
-}
+# Please refer to the vignette for the full run with parallel options. It takes a second or two.
 }

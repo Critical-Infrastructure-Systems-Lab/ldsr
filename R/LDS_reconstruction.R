@@ -101,7 +101,6 @@ call_method <- function(y, u, v, method, init, num.restarts, return.init,
 #' @param num.islands Number of islands (if method is GA; experimental)
 #' @param pop.per.island Initial population per island (if method is GA; experimental)
 #' @param return.raw If TRUE, state and streamflow estimates without measurement updates will be returned.
-#' @param nb.cores Number of cores to perform the reconstruction. Default is 1 for serial computation. If `nb.cores > 1`, parallel computation will be performed using the `doFuture` backend.
 #' @return A list of the following elements
 #' * rec: reconstruction results, a data.table with the following columns
 #'     - year: calculated from Qa and the length of u
@@ -118,20 +117,12 @@ call_method <- function(y, u, v, method, init, num.restarts, return.init,
 #' # We run this example without parallelism
 #' foreach::registerDoSEQ()
 #' LDS_reconstruction(NPannual, u, v, start.year = 1800, num.restarts = 1)
-#'
-#' \dontrun{
-#' # Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
-#' # doFuture::registerDoFuture()
-#' # future::plan(future::multiprocess)
-#'
-#' LDS_reconstruction(NPannual, t(NPpc), t(NPpc), start.year = 1200, num.restarts = 20)
-#' }
+#' # Please refer to the vignette for the full run with parallel options. It takes a second or two.
 #' @export
 LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 'log',
                                init = NULL, num.restarts = 50, return.init = FALSE,
                                ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 250,
-                               niter = 1000, tol = 1e-5, return.raw = FALSE,
-                               nb.cores = 1) {
+                               niter = 1000, tol = 1e-5, return.raw = FALSE) {
 
   # Preprocessing ------------------------------------------------------------------
   # We don't allow both u and v to be NULL for now
@@ -305,18 +296,11 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
 #' @examples
 #' # Make a shorter time horizon so that this example runs fast
 #' u <- v <- t(NPpc[601:813])
-#' # We run this example without parallelism
+#' # We run this example without parallelism.
 #' foreach::registerDoSEQ()
-#' cvLDS(NPannual, u, v, start.year = 1800, num.restarts = 1,
+#' cvLDS(NPannual, u, v, start.year = 1800, num.restarts = 2,
 #'       Z = make_Z(NPannual$Qa, nRuns = 1))
-#'
-#' \dontrun{
-#' # Multiple restarts takes time. Set up your parallel backend first, e.g., with doFuture
-#' # doFuture::registerDoFuture()
-#' # future::plan(future::multiprocess)
-#'
-#' cvLDS(NPannual, u = t(NPpc), v = t(NPpc), start.year = 1200, num.restarts = 20)
-#' }
+#' # Please refer to the vignette for the full run with parallel options. It takes a minute or two.
 #' @export
  cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log', num.restarts = 50,
                    Z = make_Z(Qa$Qa), metric.space = 'transformed', use.raw = FALSE,
