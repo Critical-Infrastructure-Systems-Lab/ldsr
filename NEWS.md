@@ -1,5 +1,9 @@
 # Change log
 
+**Version 0.0.2**
+
+Now available on CRAN, with many bugs fixed and complete documentation. Functionalities are essentially the same as 0.0.1.
+
 **Version 0.0.1**
 
 * First submission to CRAN.
