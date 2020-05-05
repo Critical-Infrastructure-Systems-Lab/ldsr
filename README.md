@@ -10,14 +10,17 @@
 
 A typical streamflow reconstruction model is linear: the relationship between streamflow *y* and the paleoclimate proxies *u* is modelled as
 
+<p align="center">
 <img src="https://render.githubusercontent.com/render/math?math=y_t = \alpha %2B \beta u_t %2B \varepsilon_t">
+</p>
 
 Linear models do not account for the catchment state and the catchment memory effect. To model these, we experimented with using the Linear Dynamical System (LDS) model. We model the relationship between streamflow and paleoclimate proxies as follows:
 
-![](https://render.githubusercontent.com/render/math?math=%5Cbegin%7Balign*%7D%20x_%7Bt%2B1%7D%20%3D%20Ax_t%20%2B%20Bu_t%20%2B%20w_t%5C%5C%20y_t%20%3D%20Cx_t%20%2B%20Du_t%20%2B%20v_t%20%5Cend%7Balign*%7D%20)
+<p align="center">
+<img src="https://render.githubusercontent.com/render/math?math=%5Cbegin%7Balign*%7D%20x_%7Bt%2B1%7D%20%3D%20Ax_t%20%2B%20Bu_t%20%2B%20w_t%5C%5C%20y_t%20%3D%20Cx_t%20%2B%20Du_t%20%2B%20v_t%20%5Cend%7Balign*%7D%20">
+</p>
 
-
-Observe that linear regression is a special case of LDS. The constant term $\alpha$ of linear regression is replaced by a state-dependent term $Cx_t$, and the system state follows a state transition equation.
+Observe that linear regression is a special case of LDS. The constant term ![\alpha](https://render.githubusercontent.com/render/math?math=%5Calpha) of linear regression is replaced by a state-dependent term ![Cx_t](https://render.githubusercontent.com/render/math?math=Cx_t), and the system state follows a state transition equation.
 
 We described the method in full detail, together with a case study for the Ping River (Thailand), in Nguyen and Galelli (2018)---please cite this paper when you use the package. We also used the method to reconstruct streamflow for 48 stations in 16 countries in Asia (Nguyen et al, 2019). 
 
