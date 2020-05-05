@@ -14,7 +14,7 @@ A typical streamflow reconstruction model is linear: the relationship between st
 <img src="https://render.githubusercontent.com/render/math?math=y_t = \alpha %2B \beta u_t %2B \varepsilon_t">
 </p>
 
-Linear models do not account for the catchment state and the catchment memory effect. To model these, we experimented with using the Linear Dynamical System (LDS) model. We model the relationship between streamflow and paleoclimate proxies as follows:
+Linear models do not account for the catchment state and the catchment memory effect. To tackle this, we experiment with using the Linear Dynamical System (LDS) model. The relationship between streamflow and paleoclimate proxies is characterized as follows:
 
 <p align="center">
 <img src="https://render.githubusercontent.com/render/math?math=%5Cbegin%7Balign*%7D%20x_%7Bt%2B1%7D%20%3D%20Ax_t%20%2B%20Bu_t%20%2B%20w_t%5C%5C%20y_t%20%3D%20Cx_t%20%2B%20Du_t%20%2B%20v_t%20%5Cend%7Balign*%7D%20">
@@ -24,7 +24,7 @@ Observe that linear regression is a special case of LDS. The constant term ![\al
 
 We described the method in full detail, together with a case study for the Ping River (Thailand), in Nguyen and Galelli (2018)---please cite this paper when you use the package. We also used the method to reconstruct streamflow for 48 stations in 16 countries in Asia (Nguyen et al, 2019). 
 
-For a tutorial on how to use the package, please see the [package's vignette](https://cran.r-project.org/web/packages/ldsr/vignettes/ldsr.html)
+For a tutorial on how to use the package, please see the [package's vignette](https://cran.r-project.org/web/packages/ldsr/vignettes/ldsr.html).
 
 ## Installation
 
