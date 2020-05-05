@@ -40,7 +40,7 @@ To install the development version
 
 ```
 install.packages('remotes')
-remotes::install_github('ntthung/ldsr', build_vignettes = TRUE)
+remotes::install_github('ntthung/ldsr')
 ```
 
 ## References
