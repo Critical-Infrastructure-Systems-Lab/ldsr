@@ -192,16 +192,16 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
     C <- c(theta$C)
     # Confidence intervals
     CI.X <- 1.96 * sqrt(V)
-    varY <- C * V * C + c(theta$R)
-    CI.Y <- 1.96 * sqrt(varY)
+    sdY <- sqrt(C * V * C + c(theta$R))
+    CI.Y <- 1.96 * sdY
 
     X.out <- data.table(year = years, X = X, Xl = X - CI.X, Xu = X + CI.X)
 
     Q.out <- switch(transform,
-                    log = exp_ci(Y, varY),
+                    log = exp_ci(Y, sdY),
                     none = data.table(Q = Y, Ql = Y - CI.Y, Qu = Y + CI.Y),
                     boxcox =
-                      if (lambda == 0) exp_ci(y, varY) else {
+                      if (lambda == 0) exp_ci(y, sdY) else {
                         dt <- cbind(Q = Y, Ql = Y - CI.Y, Qu = Y + CI.Y)
                         dt <- as.data.table(inv_boxcox(dt, lambda))
                       })

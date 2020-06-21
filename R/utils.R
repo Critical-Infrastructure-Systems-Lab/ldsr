@@ -119,8 +119,9 @@ inv_boxcox <- function(x, lambda) {
 #' @param y A vector of model estimates
 #' @param sigma2 The variance of y as learned from a model
 #' @return A data.table with the updated confidence intervals
-exp_ci <- function(y, sigma2) {
-  dist <- 1.96 * sqrt((exp(sigma2) - 1) * exp(2 * y + sigma2))
+exp_ci <- function(y, sigma) {
   Q <- exp(y)
-  data.table(Q = Q, Ql = Q - dist, Qu = Q + dist)
+  qq <- mapply(function(m, s) qlnorm(c(0.05, 0.95), m, s),
+               m = y, s = sigma)
+  data.table(Q = Q, Ql = qq[1, ], Qu = qq[2, ])
 }

@@ -47,12 +47,12 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
     rec <- stats::predict(fit, newdata = pc, interval = 'prediction')
     if (transform == 'log') {
       # dist = 1.96 * sqrt(varY)
-      varY <- ((rec[, 'upr'] - rec[, 'fit']) / 1.96)^2
-      rec <- exp_ci(rec[, 'fit'], varY) # This returns a data.table directly
+      sdY <- (rec[, 'upr'] - rec[, 'fit']) / 1.96
+      rec <- exp_ci(rec[, 'fit'], sdY) # This returns a data.table directly
     } else if (transform == 'boxcox') {
       if (lambda == 0) {
-        varY <- ((rec[, 'upr'] - rec[, 'fit']) / 1.96)^2
-        rec <- exp_ci(rec[, 'fit'], varY) # This returns a data.table directly
+        sdY <- (rec[, 'upr'] - rec[, 'fit']) / 1.96
+        rec <- exp_ci(rec[, 'fit'], sdY) # This returns a data.table directly
       } else {
         rec <- as.data.table(inv_boxcox(rec, lambda))
         setnames(rec, c('Q', 'Ql', 'Qu'))
