@@ -167,7 +167,10 @@ LDS_reconstruction <- function(Qa, u, v, start.year, method = 'EM', transform = 
   } else if (transform == 'boxcox') {
     bc <- MASS::boxcox(y ~ 1, plotit = FALSE)
     lambda <- bc$x[which.max(bc$y)]
-    y <- (y^lambda - 1) / lambda
+    if (abs(lambda) < 0.01) {
+      lambda <- 0
+      y <- log(y)
+    } else y <- (y^lambda - 1) / lambda
   } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, and set transform = "none".')
 
   if (method != 'EM' && (is.null(ub) || is.null(lb)))
@@ -347,7 +350,10 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
   } else if (transform == 'boxcox') {
     bc <- MASS::boxcox(obs ~ 1, plotit = FALSE)
     lambda <- bc$x[which.max(bc$y)]
-    obs <- (obs^lambda - 1) / lambda
+    if (abs(lambda) < 0.01) {
+      lambda <- 0
+      obs <- log(obs)
+    } else obs <- (obs^lambda - 1) / lambda
   } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, with transform = "none".')
 
   if (!is.list(Z)) stop("Please provide the cross-validation folds (Z) in a list.")

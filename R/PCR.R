@@ -33,7 +33,10 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
   } else if (transform == 'boxcox') {
     bc <- MASS::boxcox(y ~ 1, plotit = FALSE)
     lambda <- bc$x[which.max(bc$y)]
-    y <- (y^lambda - 1) / lambda
+    if (abs(lambda) < 0.01) {
+      lambda <- 0
+      y <- log(y)
+    } else y <- (y^lambda - 1) / lambda
   } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, and set transform = "none".')
 
   years <- start.year:end.year
@@ -134,7 +137,10 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
   } else if (transform == 'boxcox') {
     bc <- MASS::boxcox(y ~ 1, plotit = FALSE)
     lambda <- bc$x[which.max(bc$y)]
-    y <- (y^lambda - 1) / lambda
+    if (abs(lambda) < 0.01) {
+      lambda <- 0
+      y <- log(y)
+    } else y <- (y^lambda - 1) / lambda
   } else if (transform != 'none') stop('Accepted transformations are "log", "boxcox" and "none" only. If you need another transformation, please do so first, and then supplied the transformed variable in Qa, with transform = "none".')
 
   years <- start.year:end.year
