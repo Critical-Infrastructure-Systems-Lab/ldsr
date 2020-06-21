@@ -1,7 +1,7 @@
 Package: ldsr
 Type: Package
 Title: Linear Dynamical System Reconstruction
-Version: 0.0.2
+Version: 0.0.3
 Authors@R: c(
     person("Hung", "Nguyen", email = "ntthung@gmail.com", role = c("aut", "cre")),
     person("Stefano", "Galelli", email = "stefano_galelli@sutd.edu.sg", role = "ctb")
