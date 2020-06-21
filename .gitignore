@@ -15,3 +15,4 @@ src-i386
 src-x64
 experiments
 tests/testthat/Rplots.pdf
+ldsr.bib
