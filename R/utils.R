@@ -117,11 +117,9 @@ inv_boxcox <- function(x, lambda) {
 #'
 #' Get the confidence interval of Q = exp(Y) when Y is normal, i.e, Q is log-normal.
 #' @param y A vector of model estimates
-#' @param sigma2 The variance of y as learned from a model
+#' @param sigma The standard deviation of y as learned from a model
 #' @return A data.table with the updated confidence intervals
 exp_ci <- function(y, sigma) {
-  Q <- exp(y)
-  qq <- mapply(function(m, s) qlnorm(c(0.05, 0.95), m, s),
-               m = y, s = sigma)
-  data.table(Q = Q, Ql = qq[1, ], Qu = qq[2, ])
+  qq <- mapply(function(m, s) qlnorm(c(0.05, 0.95), m, s), m = y, s = sigma)
+  data.table(Q = exp(y), Ql = qq[1, ], Qu = qq[2, ])
 }
