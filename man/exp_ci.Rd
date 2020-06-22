@@ -4,12 +4,12 @@
 \alias{exp_ci}
 \title{Exponential confidence interval}
 \usage{
-exp_ci(y, sigma2)
+exp_ci(y, sigma)
 }
 \arguments{
 \item{y}{A vector of model estimates}
 
-\item{sigma2}{The variance of y as learned from a model}
+\item{sigma}{The standard deviation of y as learned from a model}
 }
 \value{
 A data.table with the updated confidence intervals

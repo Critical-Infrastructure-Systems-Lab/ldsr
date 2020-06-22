@@ -4,12 +4,14 @@
 \alias{one_pcr_cv}
 \title{One cross-validation run}
 \usage{
-one_pcr_cv(df, z)
+one_pcr_cv(Xmat, y, z)
 }
 \arguments{
-\item{df}{The training data, with one column named y, the (transformed) observations. and other columns the predictors.}
+\item{Xmat}{The matrix of training data in the instrumental period.}
 
-\item{z}{A vector of left-out points}
+\item{y}{A vector of observations.}
+
+\item{z}{A vector of left-out points.}
 }
 \value{
 A vector of prediction.

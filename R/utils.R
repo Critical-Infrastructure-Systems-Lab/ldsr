@@ -120,6 +120,6 @@ inv_boxcox <- function(x, lambda) {
 #' @param sigma The standard deviation of y as learned from a model
 #' @return A data.table with the updated confidence intervals
 exp_ci <- function(y, sigma) {
-  qq <- mapply(function(m, s) qlnorm(c(0.05, 0.95), m, s), m = y, s = sigma)
+  qq <- mapply(function(m, s) stats::qlnorm(c(0.05, 0.95), m, s), m = y, s = sigma)
   data.table(Q = exp(y), Ql = qq[1, ], Qu = qq[2, ])
 }
