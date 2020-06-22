@@ -93,13 +93,17 @@ PCR_reconstruction <- function(Qa, pc, start.year, transform = 'log') {
 #' One cross-validation run
 #'
 #' Make one prediction for one cross-validation run. This is a subroutine to be called by other cross-validation functions.
-#' @param df The training data, with one column named y, the (transformed) observations. and other columns the predictors.
-#' @param z A vector of left-out points
+#' @param Xmat The matrix of training data in the instrumental period.
+#' @param y A vector of observations.
+#' @param z A vector of left-out points.
 #' @return A vector of prediction.
 #' @export
-one_pcr_cv <- function(df, z) {
-  fit <- stats::lm(y ~ ., data = df[-z])
-  stats::predict(fit, newdata = df)
+one_pcr_cv <- function(Xmat, y, z) {
+  X <- cbind(rep(1, dim(Xmat)[1]), Xmat)
+  X2 <- X[-z, ]
+  y2 <- y[-z]
+  fit.model <- stats::.lm.fit(X2, y2)
+  c(X %*% fit.model$coefficients)
 }
 
 #' Cross validation of PCR reconstruction.
@@ -145,7 +149,7 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
 
   years <- start.year:end.year
   instPeriod <- which(years %in% Qa$year)
-  df.list <- lapply(pc.list, function(pc) as.data.table(pc)[instPeriod][, y := y][])
+  Xmat.list <- lapply(pc.list, function(pc) as.matrix(pc[instPeriod]))
 
   if (is.null(Z)) {
     Z <- make_Z(y)
@@ -154,7 +158,7 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
   }
 
   # Cross validation ------------------------------------------------------------
-  Ycv <- lapply(Z, function(z) rowMeans(sapply(df.list, one_pcr_cv, z = z)))
+  Ycv <- lapply(Z, function(z) rowMeans(sapply(Xmat.list, one_pcr_cv, y = y, z = z)))
 
   if (metric.space == 'original') {
     if (transform == 'log') {
