@@ -28,15 +28,15 @@ For a tutorial on how to use the package, please see the [package's vignette](ht
 
 ## Installation
 
-LDS is somewhat computationally heavy. To speed it up, I wrote the core routines in C++, which needs compilation. On Windows, you need to first install Rtools. [For R 4.0.0](https://cran.r-project.org/bin/windows/Rtools/). [For older R](https://cran.r-project.org/bin/windows/Rtools/history.html).
-
 `ldsr` is now available on CRAN, so you can install with
 
 ```
 install.packages('ldsr')
 ```
 
-To install the development version
+To install the development version, if you are using Windows, you will first need to install Rtools to compile the C++ code. [For R 4.0.0](https://cran.r-project.org/bin/windows/Rtools/). [For older R](https://cran.r-project.org/bin/windows/Rtools/history.html).
+
+Now to install the development version
 
 ```
 install.packages('remotes')
