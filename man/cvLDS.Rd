@@ -13,14 +13,15 @@ cvLDS(
   transform = "log",
   num.restarts = 50,
   Z = make_Z(Qa$Qa),
-  metric.space = "transformed",
+  metric.space = "original",
   use.raw = FALSE,
   ub = NULL,
   lb = NULL,
   num.islands = 4,
   pop.per.island = 100,
   niter = 1000,
-  tol = 1e-05
+  tol = 1e-05,
+  use.robust.mean = TRUE
 )
 }
 \arguments{
@@ -55,6 +56,8 @@ cvLDS(
 \item{niter}{Maximum number of iterations, default 1000}
 
 \item{tol}{Tolerance for likelihood convergence, default 1e-5. Note that the log-likelihood is normalized by dividing by the number of observations.}
+
+\item{use.robust.mean}{If TRUE (the default), use Tukey's biweight robust mean when calculating mean scores across the cross-validation run. If FALSE, use arithmetic mean. The Tukey's biweight robust mean function is \code{dplR::tbrm()}.}
 }
 \value{
 A list of cross validation results

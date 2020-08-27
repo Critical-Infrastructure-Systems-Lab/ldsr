@@ -10,7 +10,8 @@ cvPCR(
   start.year,
   transform = "log",
   Z = NULL,
-  metric.space = "transformed"
+  metric.space = "original",
+  use.robust.mean = TRUE
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ cvPCR(
 \item{Z}{A list of cross-validation folds. If \code{NULL}, will be created with \code{make_Z()} with default settings. Users are advised to use \code{make_Z()} to create the cross-validation folds beforehand. See \link{make_Z} for details.}
 
 \item{metric.space}{Either "transformed" or "original", the space to calculate the performance metrics.}
+
+\item{use.robust.mean}{If TRUE (the default), use Tukey's biweight robust mean when calculating mean scores across the cross-validation run. If FALSE, use arithmetic mean. The Tukey's biweight robust mean function is \code{dplR::tbrm()}.}
 }
 \value{
 A list of cross validation results

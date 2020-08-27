@@ -111,6 +111,7 @@ one_pcr_cv <- function(Xmat, y, z) {
 #' @inheritParams PCR_reconstruction
 #' @param Z A list of cross-validation folds. If `NULL`, will be created with `make_Z()` with default settings. Users are advised to use `make_Z()` to create the cross-validation folds beforehand. See [make_Z] for details.
 #' @param metric.space Either "transformed" or "original", the space to calculate the performance metrics.
+#' @param use.robust.mean If TRUE (the default), use Tukey's biweight robust mean when calculating mean scores across the cross-validation run. If FALSE, use arithmetic mean. The Tukey's biweight robust mean function is `dplR::tbrm()`.
 #' @return A list of cross validation results
 #' * metrics.dist: distribution of performance metrics across all cross-validation runs; a matrix, one column for each metric, with column names.
 #' * metrics: average performance metrics; a named vector.
