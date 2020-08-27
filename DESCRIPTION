@@ -17,6 +17,7 @@ Depends:
     R (>= 3.5)
 Imports:
     data.table,
+    dplR,
     foreach,
     MASS,
     Rcpp,

@@ -120,7 +120,9 @@ one_pcr_cv <- function(Xmat, y, z) {
 #' @examples
 #' cvPCR(NPannual, NPpc, start.year = 1200)
 #' @export
-cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space = 'transformed') {
+cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL,
+                  metric.space = 'original',
+                  use.robust.mean = TRUE) {
 
   # Preprocessing ------------------------------------------------------------------
   Qa <- as.data.table(Qa)
@@ -173,7 +175,8 @@ cvPCR <- function(Qa, pc, start.year, transform = 'log', Z = NULL, metric.space 
   # doing mapply on matrices is faster than working on data.table
   metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = target))
   metrics.dist <- data.table(t(metrics.dist))
-  metrics <- metrics.dist[, lapply(.SD, mean)]
+  mean.func <- if (use.robust.mean) dplR::tbrm else mean
+  metrics <- metrics.dist[, lapply(.SD, mean.func)]
 
   names(Ycv) <- seq_along(Ycv)
   setDT(Ycv, check.names = FALSE)

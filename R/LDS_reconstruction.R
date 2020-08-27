@@ -306,9 +306,10 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
 #' # Please refer to the vignette for the full run with parallel options. It takes a minute or two.
 #' @export
  cvLDS <- function(Qa, u, v, start.year, method = 'EM', transform = 'log', num.restarts = 50,
-                   Z = make_Z(Qa$Qa), metric.space = 'transformed', use.raw = FALSE,
+                   Z = make_Z(Qa$Qa), metric.space = 'original', use.raw = FALSE,
                    ub = NULL, lb = NULL, num.islands = 4, pop.per.island = 100,
-                   niter = 1000, tol = 1e-5) {
+                   niter = 1000, tol = 1e-5,
+                   use.robust.mean = TRUE) {
 
   # Preprocessing ------------------------------------------------------------------
   single <- is.matrix(u) || is.matrix(v)
@@ -393,7 +394,8 @@ one_lds_cv <- function(z, instPeriod, mu, y, u, v, method = 'EM', num.restarts =
   # doing mapply is a lot faster than working on data.table
   metrics.dist <- mapply(calculate_metrics, sim = Ycv, z = Z, MoreArgs = list(obs = target))
   metrics.dist <- data.table(t(metrics.dist))
-  metrics <- metrics.dist[, lapply(.SD, mean)]
+  mean.func <- if (use.robust.mean) dplR::tbrm else mean
+  metrics <- metrics.dist[, lapply(.SD, mean.func)]
 
   names(Ycv) <- seq_along(Ycv)
   setDT(Ycv, check.names = FALSE)
